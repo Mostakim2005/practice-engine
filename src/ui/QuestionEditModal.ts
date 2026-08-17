@@ -130,27 +130,31 @@ export class QuestionEditModal extends Modal {
 
 		new Setting(e).setName('Question').addTextArea((t) => t.setValue(this.draft.question).onChange((v) => (this.draft.question = v)));
 
-		if (this.draft.options) {
+		const options = this.draft.options;
+		if (options) {
 			e.createEl('h3', { text: 'Options' });
-			this.draft.options.forEach((option, index) => {
+			options.forEach((option, index) => {
 				new Setting(e)
 					.setName(`Option ${option.id}`)
 					.addText((t) =>
 						t
 							.setValue(option.text ?? '')
-							.onChange((v) => (this.draft.options![index].text = v)),
+							.onChange((v) => {
+								const current = options[index];
+								if (current) current.text = v;
+							}),
 					)
 					.addExtraButton((b) =>
 						b.setIcon('trash-2').setTooltip('Remove option').onClick(() => {
-							this.draft.options!.splice(index, 1);
+							options.splice(index, 1);
 							this.render();
 						}),
 					);
 			});
 			new Setting(e).addButton((b) =>
 				b.setButtonText('Add option').onClick(() => {
-					const next = String.fromCharCode(65 + this.draft.options!.length);
-					this.draft.options!.push({ id: next, text: '' });
+					const next = String.fromCharCode(65 + options.length);
+					options.push({ id: next, text: '' });
 					this.render();
 				}),
 			);
