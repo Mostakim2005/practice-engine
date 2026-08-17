@@ -6,18 +6,21 @@ export class QuestionCandidateGenerator {
 	constructor(private readonly repository: QuestionRepository) {}
 
 	getCandidates(filters: PracticeFilters | undefined, excludeIds: string[] = []): Question[] {
+		const types = filters?.types;
+
 		const query: QuestionQuery = {
 			...filters,
-			type: filters?.types?.length === 1 ? filters.types[0] : undefined,
+			type: types?.length === 1 ? types[0] : undefined,
 			excludeIds: [...(filters?.excludeIds ?? []), ...excludeIds],
 			statuses: ['active'],
 		};
 
 		const all = this.repository.queryQuestions(query);
 
-		if (filters?.types && filters.types.length > 1) {
-			return all.filter((q) => filters.types.includes(q.type));
+		if (types && types.length > 1) {
+			return all.filter((q) => types.includes(q.type));
 		}
+
 		return all;
 	}
 
