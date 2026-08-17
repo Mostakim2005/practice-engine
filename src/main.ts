@@ -1,5 +1,7 @@
 import { Notice, Plugin } from 'obsidian';
 import { QuestionRepository } from './data/QuestionRepository';
+import { AttemptRepository } from './data/AttemptRepository';
+import { PracticeView, PRACTICE_VIEW_TYPE } from './ui/PracticeView';
 import { exportQuestionBank } from './exporters/JsonExporter';
 import { ImportPreviewModal } from './ui/ImportPreviewModal';
 import { QuestionBankView, QUESTION_BANK_VIEW_TYPE } from './ui/QuestionBankView';
@@ -9,6 +11,7 @@ import { validateQuestionBank } from './validation/QuestionValidator';
 export default class PracticePlugin extends Plugin {
 	settings!: PracticePluginSettings;
 	readonly repository = new QuestionRepository(this.app);
+	readonly attempts = new AttemptRepository(this.app);
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -22,8 +25,19 @@ export default class PracticePlugin extends Plugin {
 			QUESTION_BANK_VIEW_TYPE,
 			(leaf) => new QuestionBankView(leaf, this),
 		);
+		this.registerView(
+			PRACTICE_VIEW_TYPE,
+			(leaf) => new PracticeView(leaf, this),
+		);
 
 		this.addRibbonIcon('library', 'Open question bank', () => void this.activateQuestionBankView());
+		this.addRibbonIcon('graduation-cap', 'Start practice', () => void this.activatePracticeView());
+		this.addCommand({
+			id: 'start-practice',
+			name: 'Start practice',
+			callback: () => void this.activatePracticeView(),
+		});
+
 		this.addCommand({
 			id: 'open-question-bank',
 			name: 'Open question bank',
@@ -47,6 +61,12 @@ export default class PracticePlugin extends Plugin {
 
 		this.addSettingTab(new PracticeSettingTab(this.app, this));
 	}
+
+	async activatePracticeView(): Promise<void> {
+			const existing = this.app.workspace.getLeavesOfType(PRACTICE_VIEW_TYPE)[0];
+			const leaf = existing ?? this.app.workspace.getLeaf('tab');
+			await leaf.setViewState({ type: PRACTICE_VIEW_TYPE, active: true });
+		}
 
 	async activateQuestionBankView(action?: 'create'): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(QUESTION_BANK_VIEW_TYPE)[0];
