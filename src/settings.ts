@@ -28,7 +28,6 @@ export class PracticeSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		// Keep the imperative implementation for Obsidian versions below 1.13.0.
 		this.containerEl.empty();
 		this.containerEl.createDiv({
 			text: `Question bank path: ${this.plugin.settings.questionBankPath}`,
