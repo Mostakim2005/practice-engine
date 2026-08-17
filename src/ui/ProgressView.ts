@@ -103,7 +103,7 @@ export class ProgressView extends ItemView {
 		for (const session of sessions.slice(0, 20)) {
 			const row = section.createDiv({ cls: 'practice-progress-row' });
 			row.createEl('span', {
-				text: `${new Date(session.createdAt).toLocaleString()} — ${session.status} — ${session.currentIndex}/${session.questionIds.length} answered`,
+				text: `${new Date(session.createdAt).toLocaleString()} — ${session.status} — ${session.currentIndex}/${session.maxQuestions ?? session.questionIds.length} answered`,
 			});
 		}
 	}

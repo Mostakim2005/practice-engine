@@ -1,6 +1,7 @@
 import { ItemView, Notice, Setting, WorkspaceLeaf } from 'obsidian';
 import type PracticePlugin from '../main';
 import { PracticeEngine } from '../engine/PracticeEngine';
+import { CAESARSelectionStrategy } from '../engine/caesar/CAESARSelectionStrategy';
 import { PracticeFilters } from '../types/attempt';
 import { CognitiveLevel, QuestionFamily, QuestionType } from '../types/question';
 
@@ -171,6 +172,18 @@ export class PracticeView extends ItemView {
 			text: `Question ${(session?.currentIndex ?? 0) + 1} of ${session?.questionIds.length ?? 0}`,
 		});
 		root.createEl('div', { text: `${q.subject} › ${q.topic} · ${q.type} · difficulty ${q.difficulty}` });
+		const strategy = this.engine.getCurrentSelectionStrategy();
+		if (strategy.startsWith('caesar-')) {
+			const explain = root.createDiv({ cls: 'caesar-decision-summary' });
+			explain.createEl('strong', { text: 'CAESAR adaptive' });
+			const factors = this.engine.getCurrentSelectionFactors();
+			const reason = factors.find((factor) => factor.includes('Phase=') || factor.includes('Phase:'));
+			if (reason) explain.createEl('span', { text: reason });
+			const details = explain.createEl('details');
+			details.createEl('summary', { text: 'Why this question?' });
+			for (const factor of factors) details.createEl('div', { text: `• ${factor}` });
+		}
+
 		root.createEl('h2', { text: q.question });
 
 		const feedback = root.createDiv();
@@ -225,6 +238,7 @@ export class PracticeView extends ItemView {
 				.setName('Self-assessment')
 				.setDesc('After comparing with the model answer, record your own assessment.')
 				.addButton((b) => b.setButtonText('Reveal model answer').onClick(() => {
+					this.engine.markAnswerRevealed();
 					feedback.empty();
 					feedback.createEl('h3', { text: 'Model answer' });
 					feedback.createEl('p', { text: q.answer.model });
