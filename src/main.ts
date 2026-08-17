@@ -18,7 +18,11 @@ export default class PracticePlugin extends Plugin {
 			new Notice(`Question bank load failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 
-		this.registerView(QUESTION_BANK_VIEW_TYPE, leaf => new QuestionBankView(leaf, this));
+		this.registerView(
+			QUESTION_BANK_VIEW_TYPE,
+			(leaf) => new QuestionBankView(leaf, this),
+		);
+
 		this.addRibbonIcon('library', 'Open question bank', () => void this.activateQuestionBankView());
 		this.addCommand({
 			id: 'open-question-bank',
@@ -35,31 +39,44 @@ export default class PracticePlugin extends Plugin {
 			name: 'Export question bank JSON',
 			callback: () => this.exportJson(),
 		});
+		this.addCommand({
+			id: 'create-question',
+			name: 'Create question',
+			callback: () => void this.activateQuestionBankView('create'),
+		});
+
 		this.addSettingTab(new PracticeSettingTab(this.app, this));
 	}
 
-	async activateQuestionBankView(): Promise<void> {
+	async activateQuestionBankView(action?: 'create'): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(QUESTION_BANK_VIEW_TYPE)[0];
 		const leaf = existing ?? this.app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: QUESTION_BANK_VIEW_TYPE, active: true });
+		if (action === 'create') {
+			const view = leaf.view;
+			if (view instanceof QuestionBankView) view.openCreateModal();
+		}
 	}
 
 	async chooseAndPreviewImport(): Promise<void> {
 		const input = document.body.createEl('input', { type: 'file' });
+		input.type = 'file';
 		input.accept = '.json,application/json';
+		input.style.display = 'none';
+		document.body.appendChild(input);
 		input.addEventListener('change', () => {
 			const file = input.files?.[0];
 			if (file) void this.previewImport(file);
-		});
+			input.remove();
+		}, { once: true });
 		input.click();
-		window.setTimeout(() => input.remove(), 0);
 	}
 
 	private async previewImport(file: File): Promise<void> {
 		try {
 			const raw = JSON.parse(await file.text()) as unknown;
 			const preview = this.repository.prepareImport(raw);
-			new ImportPreviewModal(this.app, preview, async replace => {
+			new ImportPreviewModal(this.app, preview, async (replace) => {
 				await this.repository.commitImport(preview, replace);
 				this.refreshViews();
 			}).open();
@@ -70,8 +87,8 @@ export default class PracticePlugin extends Plugin {
 
 	exportJson(): void {
 		const bank = this.repository.getBank();
-		const validation = validateQuestionBank(bank);
-		if (validation.issues.some(x => x.severity === 'error')) {
+		const v = validateQuestionBank(bank);
+		if (v.issues.some((x) => x.severity === 'error')) {
 			new Notice('Export blocked: stored question bank is invalid.');
 			return;
 		}
@@ -86,7 +103,11 @@ export default class PracticePlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<PracticePluginSettings>);
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			(await this.loadData()) as Partial<PracticePluginSettings>,
+		);
 	}
 
 	async saveSettings(): Promise<void> {
