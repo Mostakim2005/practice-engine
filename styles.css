@@ -1,8 +1,1 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.practice-question-bank-view{padding:18px}.practice-view-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.practice-view-header h2{margin:0}.practice-view-actions,.practice-card-actions{display:flex;gap:8px;flex-wrap:wrap}.practice-filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(3,minmax(120px,1fr));gap:8px;margin:16px 0}.practice-filters input,.practice-filters select{min-width:0;padding:8px}.practice-question-list{display:grid;gap:10px}.practice-question-card{border:1px solid var(--background-modifier-border);border-radius:10px;padding:12px}.practice-question-meta{color:var(--text-muted);font-size:.85em;margin-top:6px}.practice-count{color:var(--text-muted)}@media(max-width:700px){.practice-filters{grid-template-columns:1fr}}

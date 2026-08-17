@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0",
+  "bank": {
+    "id": "electrical-machines-demo",
+    "name": "Electrical Machines Demo",
+    "description": "Minimal import test bank"
+  },
+  "questions": [
+    {
+      "id": "EE-IM-000001",
+      "version": 1,
+      "type": "mcq",
+      "subject": "Electrical Engineering",
+      "topic": "Electrical Machines",
+      "subtopic": "Induction Motors",
+      "difficulty": 2,
+      "cognitiveLevel": "understanding",
+      "questionFamily": "conceptual",
+      "question": "Why does a squirrel-cage induction motor normally run below synchronous speed?",
+      "tags": [
+        "induction-motor",
+        "slip"
+      ],
+      "knowledgeConcepts": [
+        "induction-motor-slip",
+        "synchronous-speed"
+      ],
+      "options": [
+        {
+          "id": "A",
+          "text": "Slip is required for rotor current to be induced."
+        },
+        {
+          "id": "B",
+          "text": "The bearings intentionally slow the rotor."
+        },
+        {
+          "id": "C",
+          "text": "The supply frequency changes randomly."
+        },
+        {
+          "id": "D",
+          "text": "The rotor is mechanically locked below synchronous speed."
+        }
+      ],
+      "correctAnswer": [
+        "A"
+      ],
+      "hints": [
+        "Think about how rotor current is produced.",
+        "Rotor current requires relative motion between the rotating field and rotor."
+      ],
+      "answer": {
+        "short": "Slip is required to induce rotor current and therefore produce torque.",
+        "model": "An induction motor needs relative speed between the rotating field and rotor so rotor current is induced.",
+        "explanation": "At synchronous speed there is no relative speed, so no induced rotor EMF and no induction torque."
+      },
+      "verification": {
+        "status": "verified"
+      }
+    }
+  ]
+}
