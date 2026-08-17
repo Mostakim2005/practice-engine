@@ -403,7 +403,7 @@ export function applyAttempt(
           clamp(
             1 -
               Math.abs(
-                metacognition.meanConfidence! /
+                metacognition.meanConfidence /
                   5 -
                   observedAccuracy
               )
