@@ -1,3 +1,5 @@
+import { CognitiveLevel, QuestionFamily, QuestionType } from './question';
+
 export type AttemptResult = 'correct' | 'incorrect' | 'partial' | 'skipped';
 
 export interface AttemptEvent {
@@ -19,7 +21,26 @@ export interface AttemptEvent {
 	selectionFactors?: string[];
 }
 
-export type PracticeSessionStatus = 'created' | 'started' | 'completed' | 'abandoned' | 'interrupted';
+export type PracticeSessionStatus =
+	| 'created'
+	| 'started'
+	| 'completed'
+	| 'abandoned'
+	| 'interrupted';
+
+export interface PracticeFilters {
+	subject?: string;
+	topic?: string;
+	subtopic?: string;
+	tags?: string[];
+	knowledgeConcepts?: string[];
+	applicationDomains?: string[];
+	types?: QuestionType[];
+	difficulties?: number[];
+	cognitiveLevels?: CognitiveLevel[];
+	questionFamilies?: QuestionFamily[];
+	excludeIds?: string[];
+}
 
 export interface PracticeSession {
 	id: string;
@@ -30,15 +51,6 @@ export interface PracticeSession {
 	questionIds: string[];
 	currentIndex: number;
 	filters?: PracticeFilters;
-}
-
-export interface PracticeFilters {
-	subject?: string;
-	topic?: string;
-	subtopic?: string;
-	types?: string[];
-	difficulties?: number[];
-	excludeIds?: string[];
 }
 
 export interface SessionConstraints {
