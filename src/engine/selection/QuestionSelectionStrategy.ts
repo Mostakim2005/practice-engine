@@ -18,6 +18,7 @@ export class BasicRandomSelectionStrategy implements QuestionSelectionStrategy {
 		const pool = eligible.length ? eligible : candidates;
 		if (!pool.length) return null;
 		const question = pool[Math.floor(Math.random() * pool.length)];
+		if (!question) return null;
 		return {
 			questionId: question.id,
 			strategy: 'basic-random',
