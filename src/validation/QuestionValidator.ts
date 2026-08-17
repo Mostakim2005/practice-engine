@@ -1,8 +1,249 @@
-import { CognitiveLevel, QuestionBank, QuestionFamily, QuestionType, QUESTION_SCHEMA_VERSION } from '../types/question';
-export interface ValidationIssue { severity:'error'|'warning'; path:string; message:string; }
-const types=new Set<QuestionType>(['mcq','multiple-select','true-false','written','numerical','matching','ordering','identification','viva','multi-part']);
-const levels=new Set<CognitiveLevel>(['recall','understanding','application','analysis','evaluation','creation']);
-const families=new Set<QuestionFamily>(['fact-recall','conceptual','calculation','comparison','interpretation','diagnosis','troubleshooting','scenario','procedure','design-decision','diagram-analysis','data-analysis','identification','sequencing','reasoning']);
-const str=(v:unknown,p:string,i:ValidationIssue[]):void=>{if(typeof v!=='string'||!v.trim())i.push({severity:'error',path:p,message:'Must be a non-empty string.'});};
-const strArr=(v:unknown,p:string,i:ValidationIssue[]):void=>{if(!Array.isArray(v)||v.some(x=>typeof x!=='string'||!x.trim()))i.push({severity:'error',path:p,message:'Must be an array of non-empty strings.'});};
-export function validateQuestionBank(raw:unknown):{bank?:QuestionBank;issues:ValidationIssue[]} { const issues:ValidationIssue[]=[]; if(!raw||typeof raw!=='object'||Array.isArray(raw))return{issues:[{severity:'error',path:'$',message:'Top-level JSON must be an object.'}]}; const r=raw as Record<string,unknown>; if(r.schemaVersion!==QUESTION_SCHEMA_VERSION)issues.push({severity:'error',path:'schemaVersion',message:`Expected ${QUESTION_SCHEMA_VERSION}.`}); if(!r.bank||typeof r.bank!=='object'||Array.isArray(r.bank))issues.push({severity:'error',path:'bank',message:'bank object is required.'}); else {const b=r.bank as Record<string,unknown>;str(b.id,'bank.id',issues);str(b.name,'bank.name',issues);} if(!Array.isArray(r.questions))issues.push({severity:'error',path:'questions',message:'questions must be an array.'}); else {const ids=new Set<string>(); r.questions.forEach((rawQ,idx)=>{const p=`questions[${idx}]`; if(!rawQ||typeof rawQ!=='object'||Array.isArray(rawQ)){issues.push({severity:'error',path:p,message:'Question must be an object.'});return;} const q=rawQ as Record<string,unknown>; str(q.id,`${p}.id`,issues); if(typeof q.version!=='number'||!Number.isInteger(q.version)||q.version<1)issues.push({severity:'error',path:`${p}.version`,message:'Must be a positive integer.'}); if(!types.has(q.type as QuestionType))issues.push({severity:'error',path:`${p}.type`,message:'Unsupported question type.'}); str(q.subject,`${p}.subject`,issues);str(q.topic,`${p}.topic`,issues);str(q.question,`${p}.question`,issues);if(!Number.isInteger(q.difficulty)||!([1,2,3,4,5] as unknown[]).includes(q.difficulty))issues.push({severity:'error',path:`${p}.difficulty`,message:'Must be 1–5.'});if(!levels.has(q.cognitiveLevel as CognitiveLevel))issues.push({severity:'error',path:`${p}.cognitiveLevel`,message:'Unsupported cognitive level.'});if(!families.has(q.questionFamily as QuestionFamily))issues.push({severity:'error',path:`${p}.questionFamily`,message:'Unsupported question family.'});if(!q.answer||typeof q.answer!=='object'||Array.isArray(q.answer))issues.push({severity:'error',path:`${p}.answer`,message:'answer object is required.'});else{const a=q.answer as Record<string,unknown>;str(a.short,`${p}.answer.short`,issues);str(a.model,`${p}.answer.model`,issues);} if(q.tags!==undefined)strArr(q.tags,`${p}.tags`,issues);if(q.knowledgeConcepts!==undefined)strArr(q.knowledgeConcepts,`${p}.knowledgeConcepts`,issues);if(q.applicationDomains!==undefined)strArr(q.applicationDomains,`${p}.applicationDomains`,issues);if(q.hints!==undefined)strArr(q.hints,`${p}.hints`,issues);if(q.type==='mcq'||q.type==='multiple-select'||q.type==='true-false'){if(!Array.isArray(q.options)||q.options.length<2)issues.push({severity:'error',path:`${p}.options`,message:'At least two options are required.'});else{const oids=new Set<string>();for(const [oi,rawO] of q.options.entries()){if(!rawO||typeof rawO!=='object'||Array.isArray(rawO)){issues.push({severity:'error',path:`${p}.options[${oi}]`,message:'Option must be an object.'});continue;}const o=rawO as Record<string,unknown>;str(o.id,`${p}.options[${oi}].id`,issues);if(typeof o.id==='string'){if(oids.has(o.id))issues.push({severity:'error',path:`${p}.options[${oi}].id`,message:'Duplicate option ID.'});oids.add(o.id);}str(o.text,`${p}.options[${oi}].text`,issues);}if(!Array.isArray(q.correctAnswer)||q.correctAnswer.length<1)issues.push({severity:'error',path:`${p}.correctAnswer`,message:'At least one correct answer is required.'});else{for(const a of q.correctAnswer){if(typeof a!=='string'||!oids.has(a))issues.push({severity:'error',path:`${p}.correctAnswer`,message:`Unknown option ID: ${String(a)}.`});}if(q.type==='mcq'&&q.correctAnswer.length!==1)issues.push({severity:'error',path:`${p}.correctAnswer`,message:'MCQ requires exactly one correct answer.'});}}} if(typeof q.id==='string'){if(ids.has(q.id))issues.push({severity:'error',path:`${p}.id`,message:`Duplicate ID: ${q.id}.`});ids.add(q.id);}});} return issues.some(x=>x.severity==='error')?{issues}:{bank:r as unknown as QuestionBank,issues}; }
+import {
+	CognitiveLevel,
+	QuestionBank,
+	QuestionFamily,
+	QuestionType,
+	QUESTION_SCHEMA_VERSION,
+} from '../types/question';
+
+export interface ValidationIssue {
+	severity: 'error' | 'warning';
+	path: string;
+	message: string;
+}
+
+const types = new Set<QuestionType>([
+	'mcq',
+	'multiple-select',
+	'true-false',
+	'written',
+	'numerical',
+	'matching',
+	'ordering',
+	'identification',
+	'viva',
+	'multi-part',
+]);
+const levels = new Set<CognitiveLevel>([
+	'recall',
+	'understanding',
+	'application',
+	'analysis',
+	'evaluation',
+	'creation',
+]);
+const families = new Set<QuestionFamily>([
+	'fact-recall',
+	'conceptual',
+	'calculation',
+	'comparison',
+	'interpretation',
+	'diagnosis',
+	'troubleshooting',
+	'scenario',
+	'procedure',
+	'design-decision',
+	'diagram-analysis',
+	'data-analysis',
+	'identification',
+	'sequencing',
+	'reasoning',
+]);
+
+const str = (v: unknown, p: string, issues: ValidationIssue[]): void => {
+	if (typeof v !== 'string' || !v.trim()) {
+		issues.push({ severity: 'error', path: p, message: 'Must be a non-empty string.' });
+	}
+};
+
+const strArr = (v: unknown, p: string, issues: ValidationIssue[]): void => {
+	if (!Array.isArray(v) || v.some((x) => typeof x !== 'string' || !x.trim())) {
+		issues.push({ severity: 'error', path: p, message: 'Must be an array of non-empty strings.' });
+	}
+};
+
+export function validateQuestionBank(
+	raw: unknown,
+): { bank?: QuestionBank; issues: ValidationIssue[] } {
+	const issues: ValidationIssue[] = [];
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+		return {
+			issues: [{ severity: 'error', path: '$', message: 'Top-level JSON must be an object.' }],
+		};
+	}
+
+	const r = raw as Record<string, unknown>;
+
+	if (r.schemaVersion !== QUESTION_SCHEMA_VERSION) {
+		issues.push({
+			severity: 'error',
+			path: 'schemaVersion',
+			message: `Expected ${QUESTION_SCHEMA_VERSION}.`,
+		});
+	}
+
+	if (!r.bank || typeof r.bank !== 'object' || Array.isArray(r.bank)) {
+		issues.push({ severity: 'error', path: 'bank', message: 'bank object is required.' });
+	} else {
+		const b = r.bank as Record<string, unknown>;
+		str(b.id, 'bank.id', issues);
+		str(b.name, 'bank.name', issues);
+	}
+
+	if (!Array.isArray(r.questions)) {
+		issues.push({ severity: 'error', path: 'questions', message: 'questions must be an array.' });
+	} else {
+		const ids = new Set<string>();
+		r.questions.forEach((rawQ, idx) => {
+			const p = `questions[${idx}]`;
+			if (!rawQ || typeof rawQ !== 'object' || Array.isArray(rawQ)) {
+				issues.push({ severity: 'error', path: p, message: 'Question must be an object.' });
+				return;
+			}
+			const q = rawQ as Record<string, unknown>;
+
+			str(q.id, `${p}.id`, issues);
+			if (
+				typeof q.version !== 'number' ||
+				!Number.isInteger(q.version) ||
+				q.version < 1
+			) {
+				issues.push({
+					severity: 'error',
+					path: `${p}.version`,
+					message: 'Must be a positive integer.',
+				});
+			}
+			if (!types.has(q.type as QuestionType)) {
+				issues.push({ severity: 'error', path: `${p}.type`, message: 'Unsupported question type.' });
+			}
+			str(q.subject, `${p}.subject`, issues);
+			str(q.topic, `${p}.topic`, issues);
+			str(q.question, `${p}.question`, issues);
+			if (!Number.isInteger(q.difficulty) || !([1, 2, 3, 4, 5] as unknown[]).includes(q.difficulty)) {
+				issues.push({
+					severity: 'error',
+					path: `${p}.difficulty`,
+					message: 'Must be 1–5.',
+				});
+			}
+			if (!levels.has(q.cognitiveLevel as CognitiveLevel)) {
+				issues.push({
+					severity: 'error',
+					path: `${p}.cognitiveLevel`,
+					message: 'Unsupported cognitive level.',
+				});
+			}
+			if (!families.has(q.questionFamily as QuestionFamily)) {
+				issues.push({
+					severity: 'error',
+					path: `${p}.questionFamily`,
+					message: 'Unsupported question family.',
+				});
+			}
+			if (!q.answer || typeof q.answer !== 'object' || Array.isArray(q.answer)) {
+				issues.push({ severity: 'error', path: `${p}.answer`, message: 'answer object is required.' });
+			} else {
+				const a = q.answer as Record<string, unknown>;
+				str(a.short, `${p}.answer.short`, issues);
+				str(a.model, `${p}.answer.model`, issues);
+			}
+			if (q.tags !== undefined) strArr(q.tags, `${p}.tags`, issues);
+			if (q.knowledgeConcepts !== undefined) {
+				strArr(q.knowledgeConcepts, `${p}.knowledgeConcepts`, issues);
+			}
+			if (q.applicationDomains !== undefined) {
+				strArr(q.applicationDomains, `${p}.applicationDomains`, issues);
+			}
+			if (q.hints !== undefined) strArr(q.hints, `${p}.hints`, issues);
+
+			if (
+				q.type === 'mcq' ||
+				q.type === 'multiple-select' ||
+				q.type === 'true-false'
+			) {
+				if (!Array.isArray(q.options) || q.options.length < 2) {
+					issues.push({
+						severity: 'error',
+						path: `${p}.options`,
+						message: 'At least two options are required.',
+					});
+				} else {
+					const oids = new Set<string>();
+					for (const [oi, rawO] of q.options.entries()) {
+						if (!rawO || typeof rawO !== 'object' || Array.isArray(rawO)) {
+							issues.push({
+								severity: 'error',
+								path: `${p}.options[${oi}]`,
+								message: 'Option must be an object.',
+							});
+							continue;
+						}
+						const o = rawO as Record<string, unknown>;
+						str(o.id, `${p}.options[${oi}].id`, issues);
+						if (typeof o.id === 'string') {
+							if (oids.has(o.id)) {
+								issues.push({
+									severity: 'error',
+									path: `${p}.options[${oi}].id`,
+									message: 'Duplicate option ID.',
+								});
+							}
+							oids.add(o.id);
+						}
+						str(o.text, `${p}.options[${oi}].text`, issues);
+					}
+					if (!Array.isArray(q.correctAnswer) || q.correctAnswer.length < 1) {
+						issues.push({
+							severity: 'error',
+							path: `${p}.correctAnswer`,
+							message: 'At least one correct answer is required.',
+						});
+					} else {
+						for (const a of q.correctAnswer) {
+							if (typeof a !== 'string' || !oids.has(a)) {
+								issues.push({
+									severity: 'error',
+									path: `${p}.correctAnswer`,
+									message: `Unknown option ID: ${String(a)}.`,
+								});
+							}
+						}
+						if (q.type === 'mcq' && q.correctAnswer.length !== 1) {
+							issues.push({
+								severity: 'error',
+								path: `${p}.correctAnswer`,
+								message: 'MCQ requires exactly one correct answer.',
+							});
+						}
+						if (q.type === 'multiple-select' && q.correctAnswer.length < 2) {
+							issues.push({
+								severity: 'warning',
+								path: `${p}.correctAnswer`,
+								message: 'Multiple-select questions normally have at least two correct answers.',
+							});
+						}
+					}
+				}
+			}
+
+			if (q.status !== undefined && !['active', 'archived', 'confirmed-duplicate'].includes(String(q.status))) {
+				issues.push({
+					severity: 'error',
+					path: `${p}.status`,
+					message: 'Unsupported question status.',
+				});
+			}
+
+			if (typeof q.id === 'string') {
+				if (ids.has(q.id)) {
+					issues.push({ severity: 'error', path: `${p}.id`, message: `Duplicate ID: ${q.id}.` });
+				}
+				ids.add(q.id);
+			}
+		});
+	}
+
+	if (issues.some((x) => x.severity === 'error')) return { issues };
+	return { bank: r as unknown as QuestionBank, issues };
+}
