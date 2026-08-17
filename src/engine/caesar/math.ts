@@ -69,8 +69,8 @@ export function softmax(
 
 export function makeId(prefix: string): string {
   const id =
-    typeof globalThis.crypto?.randomUUID === "function"
-      ? globalThis.crypto.randomUUID()
+    typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${id}`;
 }
