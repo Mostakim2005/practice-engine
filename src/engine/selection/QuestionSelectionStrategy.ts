@@ -1,6 +1,8 @@
 import { Question } from '../../types/question';
 import { QuestionSelectionResult, SelectionContext } from '../../types/attempt';
 
+export type { QuestionSelectionResult } from '../../types/attempt';
+
 export interface QuestionSelectionStrategy {
 	selectNextQuestion(
 		context: SelectionContext,
