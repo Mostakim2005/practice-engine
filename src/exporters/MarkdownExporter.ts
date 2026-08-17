@@ -73,7 +73,7 @@ export function exportQuestionsMarkdown(bank: QuestionBank, questions: Question[
 	const url = URL.createObjectURL(blob);
 	const a = document.body.createEl('a', { href: url, text: 'Download' });
 	a.download = filename;
-	a.style.display = 'none';
+	a.addClass('is-hidden');
 	document.body.appendChild(a);
 	a.click();
 	a.remove();

@@ -65,7 +65,7 @@ ${body}
 	const url = URL.createObjectURL(blob);
 	const a = document.body.createEl('a', { href: url, text: 'Download' });
 	a.download = `${safe(bank.bank.name)}-selected.html`;
-	a.style.display = 'none';
+	a.addClass('is-hidden');
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
