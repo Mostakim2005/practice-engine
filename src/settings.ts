@@ -1,38 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
-
-export interface MyPluginSettings {
-	mySetting: string;
-}
-
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
-};
-
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc("It's a secret")
-			.addText((text) =>
-				text
-					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
-					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-	}
-}
+import type PracticePlugin from './main';
+export interface PracticePluginSettings{questionBankPath:string;}
+export const DEFAULT_SETTINGS:PracticePluginSettings={questionBankPath:'_Practice/Question Banks/question-bank.json'};
+export class PracticeSettingTab extends PluginSettingTab{constructor(app:App,private readonly plugin:PracticePlugin){super(app,plugin);}display():void{const e=this.containerEl;e.empty();new Setting(e).setName('Question bank path').setDesc('Phase 1 uses the default path. A configurable path will be added later.').addText(t=>t.setValue(this.plugin.settings.questionBankPath).setDisabled(true));}}
