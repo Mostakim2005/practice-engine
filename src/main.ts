@@ -62,7 +62,7 @@ export default class PracticePlugin extends Plugin {
 		const input = document.body.createEl('input', { type: 'file' });
 		input.type = 'file';
 		input.accept = '.json,application/json';
-		input.style.display = 'none';
+		input.addClass('is-hidden');
 		document.body.appendChild(input);
 		input.addEventListener('change', () => {
 			const file = input.files?.[0];
