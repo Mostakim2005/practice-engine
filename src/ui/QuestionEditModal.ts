@@ -130,38 +130,34 @@ export class QuestionEditModal extends Modal {
 
 		new Setting(e).setName('Question').addTextArea((t) => t.setValue(this.draft.question).onChange((v) => (this.draft.question = v)));
 
-		const options = this.draft.options;
-		if (options) {
+		if (this.draft.options) {
 			e.createEl('h3', { text: 'Options' });
-			options.forEach((option, index) => {
+			this.draft.options.forEach((option, index) => {
 				new Setting(e)
 					.setName(`Option ${option.id}`)
 					.addText((t) =>
 						t
-							.setValue(option.text ?? '')
-							.onChange((v) => {
-								const current = options[index];
-								if (current) current.text = v;
-							}),
+							.setValue(option.text)
+							.onChange((v) => (this.draft.options![index].text = v)),
 					)
 					.addExtraButton((b) =>
 						b.setIcon('trash-2').setTooltip('Remove option').onClick(() => {
-							options.splice(index, 1);
+							this.draft.options!.splice(index, 1);
 							this.render();
 						}),
 					);
 			});
 			new Setting(e).addButton((b) =>
 				b.setButtonText('Add option').onClick(() => {
-					const next = String.fromCharCode(65 + options.length);
-					options.push({ id: next, text: '' });
+					const next = String.fromCharCode(65 + this.draft.options!.length);
+					this.draft.options!.push({ id: next, text: '' });
 					this.render();
 				}),
 			);
-			new Setting(e).setName('Correct option IDs').addText((t) =>
+			new Setting(e).setName('Correct option ids').addText((t) =>
 				t
 					.setValue((this.draft.correctAnswer ?? []).join(','))
-					.setPlaceholder('A or A,B')
+					.setPlaceholder('A or a,b')
 					.onChange((v) => (this.draft.correctAnswer = v.split(',').map((x) => x.trim()).filter(Boolean))),
 			);
 		}
@@ -192,7 +188,7 @@ export class QuestionEditModal extends Modal {
 			return;
 		}
 		if (q.type === 'mcq' && q.correctAnswer?.length !== 1) {
-			new Notice('MCQ must have exactly one correct option.');
+			new Notice('Mcq must have exactly one correct option.');
 			return;
 		}
 		q.updatedAt = new Date().toISOString();

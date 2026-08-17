@@ -1,6 +1,6 @@
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import type PracticePlugin from '../main';
-import { Question, QuestionStatus } from '../types/question';
+import { Question } from '../types/question';
 import { QuestionSelection } from '../data/QuestionSelection';
 import { QuestionEditModal } from './QuestionEditModal';
 import { MarkDuplicateModal } from './MarkDuplicateModal';
@@ -76,7 +76,7 @@ export class QuestionBankView extends ItemView {
 		}
 
 		const selectionBar = root.createDiv({ cls: 'practice-selection-bar' });
-		const selectionCount = selectionBar.createEl('span', { text: '0 selected' });
+		const selectionCount = selectionBar.createSpan({ text: '0 Selected' });
 
 		const selectionActions = selectionBar.createDiv({ cls: 'practice-selection-actions' });
 		selectionActions.createEl('button', { text: 'Select all' }).addEventListener('click', () => {
@@ -154,8 +154,7 @@ export class QuestionBankView extends ItemView {
 		});
 
 		const actions = card.createDiv({ cls: 'practice-card-actions' });
-		const edit = actions.createEl('button', { title: 'Edit question' });
-		edit.setAttribute('aria-label', 'Edit question');
+		const edit = actions.createEl('button', { title: 'Edit question', ariaLabel: 'Edit question' });
 		setIcon(edit, 'pencil');
 		edit.addEventListener('click', () =>
 			new QuestionEditModal(this.app, q, async (updated) => {
@@ -180,8 +179,7 @@ export class QuestionBankView extends ItemView {
 			dup.addEventListener('click', () => void this.markDuplicateFrom(q));
 		}
 
-		const del = actions.createEl('button', { title: 'Delete question' });
-		del.setAttribute('aria-label', 'Delete question');
+		const del = actions.createEl('button', { title: 'Delete question', ariaLabel: 'Delete question' });
 		setIcon(del, 'trash-2');
 		del.addEventListener('click', () => {
 			new ConfirmActionModal(
@@ -219,14 +217,7 @@ export class QuestionBankView extends ItemView {
 			new Notice('Select exactly one question first.');
 			return;
 		}
-		const questionId = ids[0];
-		if (!questionId) return;
-		const question = this.plugin.repository.getQuestion(questionId);
-		if (!question) {
-			new Notice('Selected question could not be found.');
-			return;
-		}
-		await this.markDuplicateFrom(question);
+		await this.markDuplicateFrom(this.plugin.repository.getQuestion(ids[0])!);
 	}
 
 	private async bulkArchive(): Promise<void> {
