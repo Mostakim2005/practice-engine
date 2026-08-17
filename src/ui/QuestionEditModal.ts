@@ -137,7 +137,7 @@ export class QuestionEditModal extends Modal {
 					.setName(`Option ${option.id}`)
 					.addText((t) =>
 						t
-							.setValue(option.text)
+							.setValue(option.text ?? '')
 							.onChange((v) => (this.draft.options![index].text = v)),
 					)
 					.addExtraButton((b) =>
