@@ -2,6 +2,7 @@ import { Notice, Plugin } from 'obsidian';
 import { QuestionRepository } from './data/QuestionRepository';
 import { AttemptRepository } from './data/AttemptRepository';
 import { PracticeView, PRACTICE_VIEW_TYPE } from './ui/PracticeView';
+import { ProgressView, PROGRESS_VIEW_TYPE } from './ui/ProgressView';
 import { exportQuestionBank } from './exporters/JsonExporter';
 import { ImportPreviewModal } from './ui/ImportPreviewModal';
 import { QuestionBankView, QUESTION_BANK_VIEW_TYPE } from './ui/QuestionBankView';
@@ -21,23 +22,24 @@ export default class PracticePlugin extends Plugin {
 			new Notice(`Question bank load failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 
-		this.registerView(
-			QUESTION_BANK_VIEW_TYPE,
-			(leaf) => new QuestionBankView(leaf, this),
-		);
-		this.registerView(
-			PRACTICE_VIEW_TYPE,
-			(leaf) => new PracticeView(leaf, this),
-		);
+		this.registerView(QUESTION_BANK_VIEW_TYPE, (leaf) => new QuestionBankView(leaf, this));
+		this.registerView(PRACTICE_VIEW_TYPE, (leaf) => new PracticeView(leaf, this));
+		this.registerView(PROGRESS_VIEW_TYPE, (leaf) => new ProgressView(leaf, this));
 
 		this.addRibbonIcon('library', 'Open question bank', () => void this.activateQuestionBankView());
 		this.addRibbonIcon('graduation-cap', 'Start practice', () => void this.activatePracticeView());
+		this.addRibbonIcon('bar-chart-3', 'Open practice progress', () => void this.activateProgressView());
+
 		this.addCommand({
 			id: 'start-practice',
 			name: 'Start practice',
 			callback: () => void this.activatePracticeView(),
 		});
-
+		this.addCommand({
+			id: 'open-practice-progress',
+			name: 'Open practice progress',
+			callback: () => void this.activateProgressView(),
+		});
 		this.addCommand({
 			id: 'open-question-bank',
 			name: 'Open question bank',
@@ -63,10 +65,16 @@ export default class PracticePlugin extends Plugin {
 	}
 
 	async activatePracticeView(): Promise<void> {
-			const existing = this.app.workspace.getLeavesOfType(PRACTICE_VIEW_TYPE)[0];
-			const leaf = existing ?? this.app.workspace.getLeaf('tab');
-			await leaf.setViewState({ type: PRACTICE_VIEW_TYPE, active: true });
-		}
+		const existing = this.app.workspace.getLeavesOfType(PRACTICE_VIEW_TYPE)[0];
+		const leaf = existing ?? this.app.workspace.getLeaf('tab');
+		await leaf.setViewState({ type: PRACTICE_VIEW_TYPE, active: true });
+	}
+
+	async activateProgressView(): Promise<void> {
+		const existing = this.app.workspace.getLeavesOfType(PROGRESS_VIEW_TYPE)[0];
+		const leaf = existing ?? this.app.workspace.getLeaf('tab');
+		await leaf.setViewState({ type: PROGRESS_VIEW_TYPE, active: true });
+	}
 
 	async activateQuestionBankView(action?: 'create'): Promise<void> {
 		const existing = this.app.workspace.getLeavesOfType(QUESTION_BANK_VIEW_TYPE)[0];
@@ -80,15 +88,18 @@ export default class PracticePlugin extends Plugin {
 
 	async chooseAndPreviewImport(): Promise<void> {
 		const input = document.body.createEl('input', { type: 'file' });
-		input.type = 'file';
 		input.accept = '.json,application/json';
 		input.addClass('is-hidden');
 		document.body.appendChild(input);
-		input.addEventListener('change', () => {
-			const file = input.files?.[0];
-			if (file) void this.previewImport(file);
-			input.remove();
-		}, { once: true });
+		input.addEventListener(
+			'change',
+			() => {
+				const file = input.files?.[0];
+				if (file) void this.previewImport(file);
+				input.remove();
+			},
+			{ once: true },
+		);
 		input.click();
 	}
 
@@ -119,6 +130,9 @@ export default class PracticePlugin extends Plugin {
 	refreshViews(): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(QUESTION_BANK_VIEW_TYPE)) {
 			if (leaf.view instanceof QuestionBankView) leaf.view.render();
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(PROGRESS_VIEW_TYPE)) {
+			if (leaf.view instanceof ProgressView) void leaf.view.render();
 		}
 	}
 
