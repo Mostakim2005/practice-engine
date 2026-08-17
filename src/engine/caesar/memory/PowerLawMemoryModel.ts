@@ -1,6 +1,5 @@
 import {
   MemoryModel,
-  attemptToOutcome,
   baseRetrievalStrength,
 } from "./MemoryModel";
 import {
