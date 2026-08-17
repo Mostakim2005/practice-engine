@@ -2,7 +2,7 @@ import { ItemView, Notice, Setting, WorkspaceLeaf } from 'obsidian';
 import type PracticePlugin from '../main';
 import { PracticeEngine } from '../engine/PracticeEngine';
 import { PracticeFilters } from '../types/attempt';
-import { QuestionType } from '../types/question';
+import { CognitiveLevel, QuestionFamily, QuestionType } from '../types/question';
 
 export const PRACTICE_VIEW_TYPE = 'practice-engine-practice';
 
@@ -67,10 +67,10 @@ export class PracticeView extends ItemView {
 			filters.applicationDomains = value ? [value] : undefined;
 		});
 		const cognitive = this.addSelect(root, 'Cognitive level', 'All levels', taxonomy.cognitiveLevels, (value) => {
-			filters.cognitiveLevels = value ? [value] : undefined;
+			filters.cognitiveLevels = value ? [value as CognitiveLevel] : undefined;
 		});
 		const family = this.addSelect(root, 'Question family', 'All families', taxonomy.questionFamilies, (value) => {
-			filters.questionFamilies = value ? [value] : undefined;
+			filters.questionFamilies = value ? [value as QuestionFamily] : undefined;
 		});
 		const type = this.addSelect(root, 'Question type', 'All types', taxonomy.types, (value) => {
 			filters.types = value ? [value as QuestionType] : undefined;
