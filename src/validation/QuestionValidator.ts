@@ -227,7 +227,7 @@ export function validateQuestionBank(
 				}
 			}
 
-			if (q.status !== undefined && !['active', 'archived', 'confirmed-duplicate'].includes(String(q.status))) {
+			if (q.status !== undefined && (typeof q.status !== 'string' || !['active', 'archived', 'confirmed-duplicate'].includes(q.status))) {
 				issues.push({
 					severity: 'error',
 					path: `${p}.status`,
