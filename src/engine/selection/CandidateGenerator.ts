@@ -1,23 +1,24 @@
-import { QuestionRepository } from '../../data/QuestionRepository';
+import { QuestionRepository, QuestionQuery } from '../../data/QuestionRepository';
 import { Question } from '../../types/question';
-import { PracticeFilters, SelectionContext } from '../../types/attempt';
+import { PracticeFilters } from '../../types/attempt';
 
 export class QuestionCandidateGenerator {
 	constructor(private readonly repository: QuestionRepository) {}
 
 	getCandidates(filters: PracticeFilters | undefined, excludeIds: string[] = []): Question[] {
-		const excluded = new Set(excludeIds);
-		const bank = this.repository.getBank().questions;
-		return bank.filter((q) => {
-			if (excluded.has(q.id)) return false;
-			if ((q.status ?? 'active') !== 'active') return false;
-			if (filters?.subject && q.subject !== filters.subject) return false;
-			if (filters?.topic && q.topic !== filters.topic) return false;
-			if (filters?.subtopic && q.subtopic !== filters.subtopic) return false;
-			if (filters?.types?.length && !filters.types.includes(q.type)) return false;
-			if (filters?.difficulties?.length && !filters.difficulties.includes(q.difficulty)) return false;
-			return true;
-		});
+		const query: QuestionQuery = {
+			...filters,
+			type: filters?.types?.length === 1 ? filters.types[0] : undefined,
+			excludeIds: [...(filters?.excludeIds ?? []), ...excludeIds],
+			statuses: ['active'],
+		};
+
+		const all = this.repository.queryQuestions(query);
+
+		if (filters?.types && filters.types.length > 1) {
+			return all.filter((q) => filters.types.includes(q.type));
+		}
+		return all;
 	}
 
 	byIds(ids: string[]): Question[] {
