@@ -17,6 +17,8 @@ export interface AttemptEvent {
 	hintLevelReached?: number;
 	selfCorrected?: boolean;
 	answerChanges?: number;
+	answerRevealed?: boolean;
+	errorType?: string;
 	representationType?: string;
 	questionVariant?: string;
 	selectionStrategy?: string;
@@ -50,7 +52,12 @@ export interface PracticeSession {
 	startedAt?: string;
 	completedAt?: string;
 	status: PracticeSessionStatus;
+	/** Questions already selected for this session, in selection order. */
 	questionIds: string[];
+	/** Full eligible pool from which the selector may choose. */
+	candidateQuestionIds?: string[];
+	/** Maximum number of questions the learner requested. */
+	maxQuestions?: number;
 	currentIndex: number;
 	filters?: PracticeFilters;
 }
