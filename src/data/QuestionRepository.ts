@@ -1,5 +1,14 @@
 import { App, TFile } from 'obsidian';
-import { Question, QuestionBank, QUESTION_SCHEMA_VERSION, QuestionStatus } from '../types/question';
+import {
+	CognitiveLevel,
+	Question,
+	QuestionBank,
+	QUESTION_SCHEMA_VERSION,
+	QuestionFamily,
+	QuestionStatus,
+	QuestionType,
+} from '../types/question';
+import { PracticeFilters } from '../types/attempt';
 import { validateQuestionBank, ValidationIssue } from '../validation/QuestionValidator';
 
 export const QUESTION_BANK_PATH = '_Practice/Question Banks/question-bank.json';
@@ -19,11 +28,32 @@ export interface ImportPreview {
 	duplicates: DuplicateMatch[];
 }
 
+export interface QuestionQuery {
+	subject?: string;
+	topic?: string;
+	subtopic?: string;
+	tags?: string[];
+	knowledgeConcepts?: string[];
+	applicationDomains?: string[];
+	type?: QuestionType;
+	difficulties?: number[];
+	cognitiveLevels?: CognitiveLevel[];
+	questionFamilies?: QuestionFamily[];
+	statuses?: QuestionStatus[];
+	excludeIds?: string[];
+}
+
 const norm = (s: string): string =>
 	s.toLocaleLowerCase().normalize('NFKC').replace(/\s+/g, ' ').trim();
 
 const fingerprint = (q: Question): string =>
 	`${norm(q.question)}||${(q.options ?? []).map((o) => `${o.id}:${norm(o.text)}`).join('|')}||${(q.correctAnswer ?? []).slice().sort().join(',')}`;
+
+const includesAll = (haystack: string[] | undefined, needles: string[] | undefined): boolean => {
+	if (!needles?.length) return true;
+	const set = new Set(haystack ?? []);
+	return needles.every((value) => set.has(value));
+};
 
 export class QuestionRepository {
 	private bank: QuestionBank = {
@@ -41,6 +71,112 @@ export class QuestionRepository {
 	getQuestion(id: string): Question | undefined {
 		const q = this.bank.questions.find((item) => item.id === id);
 		return q ? structuredClone(q) : undefined;
+	}
+
+	queryQuestions(query: QuestionQuery = {}): Question[] {
+		const exclude = new Set(query.excludeIds ?? []);
+		return this.bank.questions
+			.filter((q) => {
+				if (exclude.has(q.id)) return false;
+				if (query.subject && q.subject !== query.subject) return false;
+				if (query.topic && q.topic !== query.topic) return false;
+				if (query.subtopic && q.subtopic !== query.subtopic) return false;
+				if (query.type && q.type !== query.type) return false;
+				if (query.difficulties?.length && !query.difficulties.includes(q.difficulty)) return false;
+				if (query.cognitiveLevels?.length && !query.cognitiveLevels.includes(q.cognitiveLevel)) return false;
+				if (query.questionFamilies?.length && !query.questionFamilies.includes(q.questionFamily)) return false;
+				if (query.statuses?.length && !query.statuses.includes(q.status ?? 'active')) return false;
+				if (!includesAll(q.tags, query.tags)) return false;
+				if (!includesAll(q.knowledgeConcepts, query.knowledgeConcepts)) return false;
+				if (!includesAll(q.applicationDomains, query.applicationDomains)) return false;
+				return true;
+			})
+			.map((q) => structuredClone(q));
+	}
+
+	questionsByConcept(conceptId: string): Question[] {
+		return this.queryQuestions({ knowledgeConcepts: [conceptId] });
+	}
+
+	questionsByConcepts(conceptIds: string[]): Question[] {
+		return this.queryQuestions({ knowledgeConcepts: conceptIds });
+	}
+
+	questionsByTopic(topic: string): Question[] {
+		return this.queryQuestions({ topic });
+	}
+
+	questionsByTag(tag: string): Question[] {
+		return this.queryQuestions({ tags: [tag] });
+	}
+
+	questionsByApplicationDomain(domain: string): Question[] {
+		return this.queryQuestions({ applicationDomains: [domain] });
+	}
+
+	relatedQuestions(questionId: string): Question[] {
+		const q = this.getQuestion(questionId);
+		if (!q) return [];
+		const ids = new Set(q.relationships?.related ?? []);
+		const result = this.bank.questions.filter((item) => ids.has(item.id));
+		return result.map((item) => structuredClone(item));
+	}
+
+	prerequisiteQuestions(questionId: string): Question[] {
+		const q = this.getQuestion(questionId);
+		if (!q) return [];
+		const ids = new Set(q.relationships?.prerequisites ?? []);
+		return this.bank.questions
+			.filter((item) => ids.has(item.id))
+			.map((item) => structuredClone(item));
+	}
+
+	followUpQuestions(questionId: string): Question[] {
+		const q = this.getQuestion(questionId);
+		if (!q) return [];
+		const ids = new Set(q.relationships?.followUps ?? []);
+		return this.bank.questions
+			.filter((item) => ids.has(item.id))
+			.map((item) => structuredClone(item));
+	}
+
+	contrastQuestions(questionId: string): Question[] {
+		const q = this.getQuestion(questionId);
+		if (!q) return [];
+		const ids = new Set(q.relationships?.contrastsWith ?? []);
+		return this.bank.questions
+			.filter((item) => ids.has(item.id))
+			.map((item) => structuredClone(item));
+	}
+
+	getTaxonomy(): {
+		subjects: string[];
+		topics: string[];
+		subtopics: string[];
+		tags: string[];
+		knowledgeConcepts: string[];
+		applicationDomains: string[];
+		types: QuestionType[];
+		difficulties: number[];
+		cognitiveLevels: CognitiveLevel[];
+		questionFamilies: QuestionFamily[];
+	} {
+		const questions = this.bank.questions;
+		const collect = (values: string[]): string[] =>
+			[...new Set(values.filter((x) => x.trim()))].sort((a, b) => a.localeCompare(b));
+
+		return {
+			subjects: collect(questions.map((q) => q.subject)),
+			topics: collect(questions.map((q) => q.topic)),
+			subtopics: collect(questions.map((q) => q.subtopic ?? '')),
+			tags: collect(questions.flatMap((q) => q.tags ?? [])),
+			knowledgeConcepts: collect(questions.flatMap((q) => q.knowledgeConcepts ?? [])),
+			applicationDomains: collect(questions.flatMap((q) => q.applicationDomains ?? [])),
+			types: [...new Set(questions.map((q) => q.type))].sort(),
+			difficulties: [...new Set(questions.map((q) => q.difficulty))].sort((a, b) => a - b),
+			cognitiveLevels: collect(questions.map((q) => q.cognitiveLevel)) as CognitiveLevel[],
+			questionFamilies: collect(questions.map((q) => q.questionFamily)) as QuestionFamily[],
+		};
 	}
 
 	async load(): Promise<void> {
