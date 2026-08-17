@@ -1,3 +1,71 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { ImportPreview } from '../data/QuestionRepository';
-export class ImportPreviewModal extends Modal{constructor(app:App,private readonly preview:ImportPreview,private readonly confirm:(replace:boolean)=>Promise<void>){super(app);}onOpen():void{const e=this.contentEl;e.empty();e.createEl('h2',{text:'Import preview'});e.createEl('p',{text:`${this.preview.bank.bank.name} — ${this.preview.bank.questions.length} question(s)`});e.createEl('p',{text:`New: ${this.preview.newQuestions.length} · Duplicate matches: ${this.preview.duplicates.length} · Conflicts: ${this.preview.replaceQuestions.length}`});if(this.preview.issues.length){e.createEl('h3',{text:'Validation issues'});const ul=e.createEl('ul');for(const x of this.preview.issues)ul.createEl('li',{text:`${x.severity.toUpperCase()}: ${x.path} — ${x.message}`});}if(this.preview.duplicates.length){e.createEl('h3',{text:'Duplicate/conflict matches'});const ul=e.createEl('ul');for(const x of this.preview.duplicates)ul.createEl('li',{text:`${x.incomingId} ↔ ${x.existingId} (${x.reason}${x.conflict?', conflict':''})`});}new Setting(e).addButton(b=>b.setButtonText('Import new only').setCta().setDisabled(this.preview.issues.some(x=>x.severity==='error')||this.preview.newQuestions.length===0).onClick(()=>void this.run(false))).addButton(b=>b.setButtonText('Import + replace conflicts').setWarning().setDisabled(this.preview.issues.some(x=>x.severity==='error')||this.preview.replaceQuestions.length===0).onClick(()=>void this.run(true))).addButton(b=>b.setButtonText('Cancel').onClick(()=>this.close()));}private async run(replace:boolean):Promise<void>{try{await this.confirm(replace);new Notice('Question import completed.');this.close();}catch(error){new Notice(`Import failed: ${error instanceof Error?error.message:String(error)}`);}}onClose():void{this.contentEl.empty();}}
+
+export class ImportPreviewModal extends Modal {
+	constructor(
+		app: App,
+		private readonly preview: ImportPreview,
+		private readonly confirm: (replace: boolean) => Promise<void>,
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		const e = this.contentEl;
+		e.empty();
+		e.createEl('h2', { text: 'Import preview' });
+		e.createEl('p', { text: `${this.preview.bank.bank.name} — ${this.preview.bank.questions.length} question(s)` });
+		e.createEl('p', {
+			text: `New: ${this.preview.newQuestions.length} · Duplicate matches: ${this.preview.duplicates.length} · Conflicts: ${this.preview.replaceQuestions.length}`,
+		});
+
+		if (this.preview.issues.length) {
+			e.createEl('h3', { text: 'Validation issues' });
+			const ul = e.createEl('ul');
+			for (const x of this.preview.issues) {
+				ul.createEl('li', { text: `${x.severity.toUpperCase()}: ${x.path} — ${x.message}` });
+			}
+		}
+
+		if (this.preview.duplicates.length) {
+			e.createEl('h3', { text: 'Duplicate or conflict matches' });
+			const ul = e.createEl('ul');
+			for (const x of this.preview.duplicates) {
+				ul.createEl('li', {
+					text: `${x.incomingId} ↔ ${x.existingId} (${x.reason}${x.conflict ? ', conflict' : ''})`,
+				});
+			}
+		}
+
+		new Setting(e)
+			.addButton((b) =>
+				b
+					.setButtonText('Import new only')
+					.setCta()
+					.setDisabled(this.preview.issues.some((x) => x.severity === 'error') || this.preview.newQuestions.length === 0)
+					.onClick(() => void this.run(false)),
+			)
+			.addButton((b) =>
+				b
+					.setButtonText('Import and replace conflicts')
+					.setWarning()
+					.setDisabled(this.preview.issues.some((x) => x.severity === 'error') || this.preview.replaceQuestions.length === 0)
+					.onClick(() => void this.run(true)),
+			)
+			.addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));
+	}
+
+	private async run(replace: boolean): Promise<void> {
+		try {
+			await this.confirm(replace);
+			new Notice('Question import completed.');
+			this.close();
+		} catch (error) {
+			new Notice(`Import failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
