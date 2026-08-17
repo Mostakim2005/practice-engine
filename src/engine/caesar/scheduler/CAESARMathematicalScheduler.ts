@@ -1,5 +1,4 @@
 import {
-  CAESARLearnerState,
   LearningDecision,
   LearningDecisionContext,
   LearningIntervention,
@@ -186,22 +185,6 @@ export class CAESARMathematicalScheduler {
       return null;
     }
 
-    const qState =
-      context.learnerState
-        .questionStates[
-        selected.question.id
-      ];
-
-    const memoryRecommendation =
-      qState
-        ? this.memoryModel.recommend(
-            qState.memory,
-            context.now,
-            this.coefficients
-              .memory
-              .targetRetrievability
-          )
-        : undefined;
 
     const confidence =
       this.decisionConfidence(
