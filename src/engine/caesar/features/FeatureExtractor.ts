@@ -8,7 +8,6 @@ import {
 import { CAESARCoefficients } from "../config";
 import {
   clamp,
-  daysBetween,
   gaussianFit,
   mean,
 } from "../math";
@@ -31,7 +30,6 @@ export class FeatureExtractor {
     const {
       learnerState,
       session,
-      now,
     } = context;
 
     const qState =
@@ -205,17 +203,6 @@ export class FeatureExtractor {
         session,
         learnerState
       );
-
-    const sources =
-      this.sources({
-        memoryNeed,
-        conceptWeakness,
-        proceduralWeakness,
-        transferNeed,
-        errorRepair,
-        prerequisiteNeed,
-        question,
-      });
 
     return {
       memoryNeed,
