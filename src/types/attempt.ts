@@ -16,6 +16,8 @@ export interface AttemptEvent {
 	hintsUsed?: number;
 	hintLevelReached?: number;
 	selfCorrected?: boolean;
+	answerChanges?: number;
+	representationType?: string;
 	questionVariant?: string;
 	selectionStrategy?: string;
 	selectionFactors?: string[];
@@ -70,4 +72,44 @@ export interface QuestionSelectionResult {
 	questionId: string;
 	strategy: string;
 	factors?: string[];
+}
+
+export interface QuestionPerformance {
+	questionId: string;
+	attemptCount: number;
+	correctCount: number;
+	incorrectCount: number;
+	partialCount: number;
+	skippedCount: number;
+	accuracy: number | null;
+	averageScore: number | null;
+	averageConfidence: number | null;
+	averageTimeSpentMs: number | null;
+	totalHintsUsed: number;
+	lastAttemptAt?: string;
+	lastResult?: AttemptResult;
+	lastConfidence?: number;
+}
+
+export interface ConceptPerformance {
+	conceptId: string;
+	questionCount: number;
+	attemptCount: number;
+	correctCount: number;
+	accuracy: number | null;
+	averageConfidence: number | null;
+	averageTimeSpentMs: number | null;
+}
+
+export interface PracticeSummary {
+	attemptCount: number;
+	correctCount: number;
+	incorrectCount: number;
+	partialCount: number;
+	skippedCount: number;
+	accuracy: number | null;
+	averageScore: number | null;
+	averageConfidence: number | null;
+	averageTimeSpentMs: number | null;
+	totalHintsUsed: number;
 }
