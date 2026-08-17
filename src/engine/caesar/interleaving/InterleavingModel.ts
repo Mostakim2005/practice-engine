@@ -1,5 +1,4 @@
 import {
-  CandidateFeatures,
   CognitiveSessionState,
   QuestionDescriptor,
   CAESARLearnerState,
