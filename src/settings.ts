@@ -1,6 +1,37 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab } from 'obsidian';
 import type PracticePlugin from './main';
-export interface PracticePluginSettings{questionBankPath:string;}
-export const DEFAULT_SETTINGS:PracticePluginSettings={questionBankPath:'_Practice/Question Banks/question-bank.json'};
-// eslint-disable-next-line obsidianmd/settings-tab/prefer-setting-definitions
-export class PracticeSettingTab extends PluginSettingTab{constructor(app:App,private readonly plugin:PracticePlugin){super(app,plugin);}display():void{const e=this.containerEl;e.empty();new Setting(e).setName('Question bank path').setDesc('Phase 1 uses the default path. A configurable path will be added later.').addText(t=>t.setValue(this.plugin.settings.questionBankPath).setDisabled(true));}}
+
+export interface PracticePluginSettings {
+	questionBankPath: string;
+}
+
+export const DEFAULT_SETTINGS: PracticePluginSettings = {
+	questionBankPath: '_Practice/Question Banks/question-bank.json',
+};
+
+export class PracticeSettingTab extends PluginSettingTab {
+	constructor(app: App, private readonly plugin: PracticePlugin) {
+		super(app, plugin);
+	}
+
+	getSettingDefinitions() {
+		return [
+			{
+				name: 'Question bank path',
+				desc: 'Location of the canonical question-bank JSON file.',
+				control: {
+					type: 'text' as const,
+					key: 'questionBankPath' as const,
+				},
+			},
+		];
+	}
+
+	display(): void {
+		// Keep the imperative implementation for Obsidian versions below 1.13.0.
+		this.containerEl.empty();
+		this.containerEl.createDiv({
+			text: `Question bank path: ${this.plugin.settings.questionBankPath}`,
+		});
+	}
+}
