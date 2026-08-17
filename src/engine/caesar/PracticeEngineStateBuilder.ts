@@ -15,6 +15,33 @@ import {
   mean,
 } from "./math";
 
+function toRepresentationType(
+  value: string | undefined,
+): import("./types").RepresentationType | undefined {
+  if (!value) return undefined;
+
+  const allowed: ReadonlySet<import("./types").RepresentationType> =
+    new Set([
+      "verbal",
+      "symbolic",
+      "numerical",
+      "diagram",
+      "graph",
+      "equation",
+      "data",
+      "physical-scenario",
+      "code",
+      "mixed",
+      "unknown",
+    ]);
+
+  return allowed.has(
+    value as import("./types").RepresentationType,
+  )
+    ? (value as import("./types").RepresentationType)
+    : "unknown";
+}
+
 function inferErrorType(
   event: AttemptEvent,
   question: Question,
@@ -108,7 +135,7 @@ function toCoreAttempt(
     difficulty:
       question.difficulty,
     representationType:
-      event.representationType,
+      toRepresentationType(event.representationType),
     schemaVersion: 1,
   };
 }
@@ -280,16 +307,14 @@ export async function buildCAESARState(
         )],
       recentDifficulty:
         recent
-          .map(
-            (event) =>
-              byId.get(
-                event.questionId,
-              )?.difficulty,
-          )
+          .map((event) => byId.get(event.questionId)?.difficulty)
           .filter(
-            (value): value is number =>
-              typeof value ===
-              "number",
+            (value): value is 1 | 2 | 3 | 4 | 5 =>
+              value === 1 ||
+              value === 2 ||
+              value === 3 ||
+              value === 4 ||
+              value === 5,
           ),
       recentResponseTimesMs:
         responseTimes,
