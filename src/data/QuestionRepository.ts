@@ -8,7 +8,6 @@ import {
 	QuestionStatus,
 	QuestionType,
 } from '../types/question';
-import { PracticeFilters } from '../types/attempt';
 import { validateQuestionBank, ValidationIssue } from '../validation/QuestionValidator';
 
 export const QUESTION_BANK_PATH = '_Practice/Question Banks/question-bank.json';
