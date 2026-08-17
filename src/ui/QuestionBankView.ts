@@ -154,7 +154,8 @@ export class QuestionBankView extends ItemView {
 		});
 
 		const actions = card.createDiv({ cls: 'practice-card-actions' });
-		const edit = actions.createEl('button', { title: 'Edit question', ariaLabel: 'Edit question' });
+		const edit = actions.createEl('button', { title: 'Edit question' });
+		edit.setAttr('aria-label', 'Edit question');
 		setIcon(edit, 'pencil');
 		edit.addEventListener('click', () =>
 			new QuestionEditModal(this.app, q, async (updated) => {
@@ -179,7 +180,8 @@ export class QuestionBankView extends ItemView {
 			dup.addEventListener('click', () => void this.markDuplicateFrom(q));
 		}
 
-		const del = actions.createEl('button', { title: 'Delete question', ariaLabel: 'Delete question' });
+		const del = actions.createEl('button', { title: 'Delete question' });
+		del.setAttr('aria-label', 'Delete question');
 		setIcon(del, 'trash-2');
 		del.addEventListener('click', () => {
 			new ConfirmActionModal(
@@ -217,7 +219,14 @@ export class QuestionBankView extends ItemView {
 			new Notice('Select exactly one question first.');
 			return;
 		}
-		await this.markDuplicateFrom(this.plugin.repository.getQuestion(ids[0])!);
+		const questionId = ids[0];
+		if (!questionId) return;
+		const question = this.plugin.repository.getQuestion(questionId);
+		if (!question) {
+			new Notice('Selected question could not be found.');
+			return;
+		}
+		await this.markDuplicateFrom(question);
 	}
 
 	private async bulkArchive(): Promise<void> {
