@@ -78,7 +78,6 @@ export default class PracticePlugin extends Plugin {
 		const right = this.app.workspace.getRightLeaf(false);
 		if (!right) return;
 		await right.setViewState({ type: PRACTICE_SIDEBAR_VIEW_TYPE, active: true });
-		this.app.workspace.revealLeaf(right);
 	}
 
 	async startPracticeForFilters(filters: PracticeFilters): Promise<void> {
