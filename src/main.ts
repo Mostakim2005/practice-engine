@@ -6,6 +6,8 @@ import { ProgressView, PROGRESS_VIEW_TYPE } from './ui/ProgressView';
 import { exportQuestionBank } from './exporters/JsonExporter';
 import { ImportPreviewModal } from './ui/ImportPreviewModal';
 import { QuestionBankView, QUESTION_BANK_VIEW_TYPE } from './ui/QuestionBankView';
+import { PracticeSidebarView, PRACTICE_SIDEBAR_VIEW_TYPE } from './ui/PracticeSidebarView';
+import { PracticeFilters } from './types/attempt';
 import { DEFAULT_SETTINGS, PracticePluginSettings, PracticeSettingTab } from './settings';
 import { validateQuestionBank } from './validation/QuestionValidator';
 
@@ -25,10 +27,12 @@ export default class PracticePlugin extends Plugin {
 		this.registerView(QUESTION_BANK_VIEW_TYPE, (leaf) => new QuestionBankView(leaf, this));
 		this.registerView(PRACTICE_VIEW_TYPE, (leaf) => new PracticeView(leaf, this));
 		this.registerView(PROGRESS_VIEW_TYPE, (leaf) => new ProgressView(leaf, this));
+		this.registerView(PRACTICE_SIDEBAR_VIEW_TYPE, (leaf) => new PracticeSidebarView(leaf, this));
 
 		this.addRibbonIcon('library', 'Open question bank', () => void this.activateQuestionBankView());
 		this.addRibbonIcon('graduation-cap', 'Start practice', () => void this.activatePracticeView());
 		this.addRibbonIcon('bar-chart-3', 'Open practice progress', () => void this.activateProgressView());
+		this.addRibbonIcon('layout-sidebar-right', 'Open practice sidebar', () => void this.activateSidebarView());
 
 		this.addCommand({
 			id: 'start-practice',
@@ -68,6 +72,19 @@ export default class PracticePlugin extends Plugin {
 		const existing = this.app.workspace.getLeavesOfType(PRACTICE_VIEW_TYPE)[0];
 		const leaf = existing ?? this.app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: PRACTICE_VIEW_TYPE, active: true });
+	}
+
+	async activateSidebarView(): Promise<void> {
+		const right = this.app.workspace.getRightLeaf(false);
+		if (!right) return;
+		await right.setViewState({ type: PRACTICE_SIDEBAR_VIEW_TYPE, active: true });
+		this.app.workspace.revealLeaf(right);
+	}
+
+	async startPracticeForFilters(filters: PracticeFilters): Promise<void> {
+		await this.activatePracticeView();
+		const leaf = this.app.workspace.getLeavesOfType(PRACTICE_VIEW_TYPE)[0];
+		if (leaf?.view instanceof PracticeView) leaf.view.startWithFilters(filters);
 	}
 
 	async activateProgressView(): Promise<void> {
