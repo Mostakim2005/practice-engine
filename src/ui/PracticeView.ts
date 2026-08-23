@@ -1,31 +1,30 @@
 import { ItemView, Notice, Setting, WorkspaceLeaf } from 'obsidian';
 import type PracticePlugin from '../main';
 import { PracticeEngine } from '../engine/PracticeEngine';
-import { CAESARSelectionStrategy } from '../engine/caesar/CAESARSelectionStrategy';
 import { PracticeFilters } from '../types/attempt';
-import { CognitiveLevel, QuestionFamily, QuestionType } from '../types/question';
+import { CognitiveLevel, QuestionFamily, QuestionType, Question } from '../types/question';
+import { renderMarkdownContent } from './MarkdownContent';
+import type { Component } from 'obsidian';
 
 export const PRACTICE_VIEW_TYPE = 'practice-engine-practice';
 
+type FilterKey = 'subject' | 'topic' | 'subtopic' | 'knowledgeConcepts' | 'applicationDomains' | 'cognitiveLevels' | 'questionFamilies' | 'types' | 'difficulties';
+
 export class PracticeView extends ItemView {
 	private engine: PracticeEngine;
+	private markdownComponents: Component[] = [];
+	private filters: PracticeFilters = {};
+	private maxQuestions = 10;
+	private activeSetup?: { root: HTMLElement; selects: Map<FilterKey, HTMLSelectElement>; count: HTMLElement };
 
 	constructor(leaf: WorkspaceLeaf, private readonly plugin: PracticePlugin) {
 		super(leaf);
 		this.engine = new PracticeEngine(this.plugin.repository, this.plugin.attempts);
 	}
 
-	getViewType(): string {
-		return PRACTICE_VIEW_TYPE;
-	}
-
-	getDisplayText(): string {
-		return 'Practice';
-	}
-
-	getIcon(): string {
-		return 'graduation-cap';
-	}
+	getViewType(): string { return PRACTICE_VIEW_TYPE; }
+	getDisplayText(): string { return 'Practice'; }
+	getIcon(): string { return 'graduation-cap'; }
 
 	onOpen(): Promise<void> {
 		this.renderSetup();
@@ -33,122 +32,204 @@ export class PracticeView extends ItemView {
 	}
 
 	onClose(): Promise<void> {
+		this.cleanupMarkdown();
 		return Promise.resolve();
 	}
 
+	startWithFilters(filters: PracticeFilters): void {
+		this.filters = structuredClone(filters);
+		this.renderSetup();
+	}
+
 	renderSetup(): void {
+		this.cleanupMarkdown();
 		const root = this.contentEl;
 		root.empty();
-		root.addClass('practice-engine-view');
-		root.createEl('h2', { text: 'Practice' });
-		root.createEl('p', {
-			text: 'Choose a structured practice set. Selection remains replaceable so the future Caesar engine can use the same filters and candidate set.',
-		});
+		root.addClass('practice-engine-view', 'practice-setup-view');
+
+		const header = root.createDiv({ cls: 'practice-page-header' });
+		const title = header.createDiv();
+		title.createEl('h2', { text: 'Start practice' });
+		title.createEl('p', { cls: 'practice-muted', text: 'Choose a focused set. Filters update each other automatically.' });
+		const headerActions = header.createDiv({ cls: 'practice-header-actions' });
+		const sidebar = headerActions.createEl('button', { text: 'Open sidebar' });
+		sidebar.addEventListener('click', () => void this.plugin.activateSidebarView());
+		const progress = headerActions.createEl('button', { text: 'View progress' });
+		progress.addEventListener('click', () => void this.plugin.activateProgressView());
 
 		const taxonomy = this.plugin.repository.getTaxonomy();
-		const filters: PracticeFilters = {};
-		const maxQuestions = { value: 10 };
+		const grid = root.createDiv({ cls: 'practice-filter-grid' });
+		const selects = new Map<FilterKey, HTMLSelectElement>();
+		const add = (key: FilterKey, label: string, values: string[], value?: string): HTMLSelectElement => {
+			const wrap = grid.createDiv({ cls: 'practice-filter-field' });
+			wrap.createEl('label', { text: label });
+			const select = wrap.createEl('select');
+			select.dataset.filterKey = key;
+			select.appendChild(new Option(`All ${label.toLocaleLowerCase()}`, ''));
+			for (const item of values) select.appendChild(new Option(item, item));
+			select.value = value ?? '';
+			select.addEventListener('change', () => {
+				this.applySetupSelection(selects);
+				this.refreshSetupSelectors(selects);
+			});
+			selects.set(key, select);
+			return select;
+		};
 
-		const subject = this.addSelect(root, 'Subject', 'All subjects', taxonomy.subjects, (value) => {
-			filters.subject = value || undefined;
-			this.refreshDependentTopicSelectors(root, filters);
-		});
-		const topic = this.addSelect(root, 'Topic', 'All topics', taxonomy.topics, (value) => {
-			filters.topic = value || undefined;
-			this.refreshDependentSubtopicSelectors(root, filters);
-		});
-		const subtopic = this.addSelect(root, 'Subtopic', 'All subtopics', taxonomy.subtopics, (value) => {
-			filters.subtopic = value || undefined;
-		});
+		add('subject', 'Subject', taxonomy.subjects, this.filters.subject);
+		add('topic', 'Topic', taxonomy.topics, this.filters.topic);
+		add('subtopic', 'Subtopic', taxonomy.subtopics, this.filters.subtopic);
+		add('knowledgeConcepts', 'Concept', taxonomy.knowledgeConcepts, this.filters.knowledgeConcepts?.[0]);
+		add('applicationDomains', 'Application domain', taxonomy.applicationDomains, this.filters.applicationDomains?.[0]);
+		add('cognitiveLevels', 'Cognitive level', taxonomy.cognitiveLevels, this.filters.cognitiveLevels?.[0]);
+		add('questionFamilies', 'Question family', taxonomy.questionFamilies, this.filters.questionFamilies?.[0]);
+		add('types', 'Question type', taxonomy.types, this.filters.types?.[0]);
+		add('difficulties', 'Difficulty', taxonomy.difficulties.map(String), this.filters.difficulties?.[0] === undefined ? undefined : String(this.filters.difficulties[0]));
 
-		const concept = this.addSelect(root, 'Knowledge concept', 'All concepts', taxonomy.knowledgeConcepts, (value) => {
-			filters.knowledgeConcepts = value ? [value] : undefined;
-		});
-		const application = this.addSelect(root, 'Application domain', 'All application domains', taxonomy.applicationDomains, (value) => {
-			filters.applicationDomains = value ? [value] : undefined;
-		});
-		const cognitive = this.addSelect(root, 'Cognitive level', 'All levels', taxonomy.cognitiveLevels, (value) => {
-			filters.cognitiveLevels = value ? [value as CognitiveLevel] : undefined;
-		});
-		const family = this.addSelect(root, 'Question family', 'All families', taxonomy.questionFamilies, (value) => {
-			filters.questionFamilies = value ? [value as QuestionFamily] : undefined;
-		});
-		const type = this.addSelect(root, 'Question type', 'All types', taxonomy.types, (value) => {
-			filters.types = value ? [value as QuestionType] : undefined;
-		});
-		const difficulty = this.addSelect(root, 'Difficulty', 'All difficulties', taxonomy.difficulties.map(String), (value) => {
-			filters.difficulties = value ? [Number(value)] : undefined;
+		const meta = root.createDiv({ cls: 'practice-filter-meta' });
+		const count = meta.createSpan({ text: '0 matching active questions' });
+		const reset = meta.createEl('button', { text: 'Clear filters' });
+		reset.addEventListener('click', () => {
+			this.filters = {};
+			for (const select of selects.values()) select.value = '';
+			this.refreshSetupSelectors(selects);
+			this.updateCandidateCount(count);
 		});
 
 		new Setting(root)
-			.setName('Questions')
-			.setDesc('Number of questions in this session.')
-			.addText((t) =>
-				t.setValue(String(maxQuestions.value)).onChange((v) => {
-					const parsed = Number(v);
-					if (Number.isFinite(parsed) && parsed > 0) maxQuestions.value = Math.min(100, Math.floor(parsed));
+			.setName('Questions per session')
+			.setDesc('Choose how many questions to attempt, up to 100.')
+			.addText((text) => text
+				.setValue(String(this.maxQuestions))
+				.setPlaceholder('10')
+				.onChange((value) => {
+					const n = Number(value);
+					if (Number.isFinite(n) && n > 0) this.maxQuestions = Math.min(100, Math.floor(n));
 				}),
 			);
 
-		new Setting(root)
-			.addButton((b) =>
-				b.setButtonText('Start practice').setCta().onClick(() => void this.start(maxQuestions.value, filters)),
-			);
+		const start = root.createEl('button', { text: 'Start practice', cls: 'practice-primary-button' });
+		start.addEventListener('click', () => void this.start());
 
-		void subject;
-		void topic;
-		void subtopic;
-		void concept;
-		void application;
-		void cognitive;
-		void family;
-		void type;
-		void difficulty;
+		this.activeSetup = { root, selects, count };
+		this.refreshSetupSelectors(selects);
 	}
 
-	private addSelect(
-		root: HTMLElement,
-		label: string,
-		allLabel: string,
-		values: string[],
-		onChange: (value: string) => void,
-	): HTMLSelectElement {
-		const setting = new Setting(root).setName(label);
-		const select = setting.controlEl.createEl('select');
-		select.createEl('option', { value: '', text: allLabel });
-		for (const value of values) {
-			select.createEl('option', { value, text: value });
+	private applySetupSelection(selects: Map<FilterKey, HTMLSelectElement>): void {
+		const subject = selects.get('subject')?.value || undefined;
+		const topic = selects.get('topic')?.value || undefined;
+		const subtopic = selects.get('subtopic')?.value || undefined;
+		this.filters.subject = subject;
+		this.filters.topic = topic;
+		this.filters.subtopic = subtopic;
+		this.filters.knowledgeConcepts = this.optionalArray(selects.get('knowledgeConcepts')?.value);
+		this.filters.applicationDomains = this.optionalArray(selects.get('applicationDomains')?.value);
+		this.filters.cognitiveLevels = this.optionalArray(selects.get('cognitiveLevels')?.value as CognitiveLevel | undefined) as CognitiveLevel[] | undefined;
+		this.filters.questionFamilies = this.optionalArray(selects.get('questionFamilies')?.value as QuestionFamily | undefined) as QuestionFamily[] | undefined;
+		this.filters.types = this.optionalArray(selects.get('types')?.value as QuestionType | undefined) as QuestionType[] | undefined;
+		const difficulty = selects.get('difficulties')?.value;
+		this.filters.difficulties = difficulty ? [Number(difficulty)] : undefined;
+	}
+
+	private optionalArray<T>(value?: T): T[] | undefined { return value ? [value] : undefined; }
+
+	private refreshSetupSelectors(selects: Map<FilterKey, HTMLSelectElement>): void {
+		this.applySetupSelection(selects);
+		const bank = this.plugin.repository.getBank().questions;
+		const selectedSubject = this.filters.subject;
+		const base = bank.filter((q) => (q.status ?? 'active') === 'active');
+		const selectedSubjectQuestions = selectedSubject ? base.filter((q) => q.subject === selectedSubject) : base;
+		const relatedIds = new Set<string>();
+		for (const q of selectedSubjectQuestions) {
+			for (const id of [
+				...(q.relationships?.related ?? []),
+				...(q.relationships?.prerequisites ?? []),
+				...(q.relationships?.followUps ?? []),
+				...(q.relationships?.contrastsWith ?? []),
+				...(q.relationships?.harderVersions ?? []),
+				...(q.relationships?.easierVersions ?? []),
+			]) relatedIds.add(id);
 		}
-		select.addEventListener('change', () => onChange(select.value));
-		setting.controlEl.appendChild(select);
-		return select;
+		const scoped = selectedSubject
+			? base.filter((q) => q.subject === selectedSubject || relatedIds.has(q.id))
+			: base;
+		const scope = (key: FilterKey): Question[] => {
+			const withoutOwn = scoped.filter((q) => {
+				if (key !== 'subject' && this.filters.subject && q.subject !== this.filters.subject && !relatedIds.has(q.id)) return false;
+				if (key !== 'topic' && this.filters.topic && q.topic !== this.filters.topic) return false;
+				if (key !== 'subtopic' && this.filters.subtopic && q.subtopic !== this.filters.subtopic) return false;
+				if (key !== 'knowledgeConcepts' && this.filters.knowledgeConcepts?.length && !this.filters.knowledgeConcepts.every((x) => q.knowledgeConcepts?.includes(x))) return false;
+				if (key !== 'applicationDomains' && this.filters.applicationDomains?.length && !this.filters.applicationDomains.every((x) => q.applicationDomains?.includes(x))) return false;
+				if (key !== 'cognitiveLevels' && this.filters.cognitiveLevels?.length && !this.filters.cognitiveLevels.includes(q.cognitiveLevel)) return false;
+				if (key !== 'questionFamilies' && this.filters.questionFamilies?.length && !this.filters.questionFamilies.includes(q.questionFamily)) return false;
+				if (key !== 'types' && this.filters.types?.length && !this.filters.types.includes(q.type)) return false;
+				if (key !== 'difficulties' && this.filters.difficulties?.length && !this.filters.difficulties.includes(q.difficulty)) return false;
+				return true;
+			});
+			return withoutOwn;
+		};
+		const valuesFor = (key: FilterKey): string[] => {
+			const qs = scope(key);
+			switch (key) {
+				case 'subject': return this.unique(qs.map((q) => q.subject));
+				case 'topic': return this.unique(qs.map((q) => q.topic));
+				case 'subtopic': return this.unique(qs.map((q) => q.subtopic ?? ''));
+				case 'knowledgeConcepts': return this.unique(qs.flatMap((q) => q.knowledgeConcepts ?? []));
+				case 'applicationDomains': return this.unique(qs.flatMap((q) => q.applicationDomains ?? []));
+				case 'cognitiveLevels': return this.unique(qs.map((q) => q.cognitiveLevel));
+				case 'questionFamilies': return this.unique(qs.map((q) => q.questionFamily));
+				case 'types': return this.unique(qs.map((q) => q.type));
+				case 'difficulties': return [...new Set(qs.map((q) => q.difficulty))].sort((a, b) => a - b).map(String);
+			}
+		};
+		for (const [key, select] of selects) {
+			const current = select.value;
+			const values = valuesFor(key);
+			select.empty();
+			select.appendChild(new Option(`All ${select.dataset.filterKey === 'types' ? 'question types' : key === 'cognitiveLevels' ? 'cognitive levels' : key.replace(/([A-Z])/g, ' $1').toLowerCase()}`, ''));
+			for (const value of values) select.appendChild(new Option(value, value));
+			if (current && values.includes(current)) select.value = current;
+			else {
+				select.value = '';
+				if (current) this.clearFilter(key);
+			}
+		}
+		this.applySetupSelection(selects);
+		this.updateCandidateCount(this.activeSetup?.count);
 	}
 
-	private refreshDependentTopicSelectors(root: HTMLElement, filters: PracticeFilters): void {
-		void root;
-		void filters;
-		// Phase 4 keeps filtering data-driven while leaving the selector UI stable.
-		// Topic/subtopic dependency refinement will be expanded with the future taxonomy UI.
+	private clearFilter(key: FilterKey): void {
+		switch (key) {
+			case 'subject': delete this.filters.subject; break;
+			case 'topic': delete this.filters.topic; break;
+			case 'subtopic': delete this.filters.subtopic; break;
+			case 'knowledgeConcepts': delete this.filters.knowledgeConcepts; break;
+			case 'applicationDomains': delete this.filters.applicationDomains; break;
+			case 'cognitiveLevels': delete this.filters.cognitiveLevels; break;
+			case 'questionFamilies': delete this.filters.questionFamilies; break;
+			case 'types': delete this.filters.types; break;
+			case 'difficulties': delete this.filters.difficulties; break;
+		}
 	}
 
-	private refreshDependentSubtopicSelectors(root: HTMLElement, filters: PracticeFilters): void {
-		void root;
-		void filters;
+	private updateCandidateCount(target?: HTMLElement): void {
+		if (!target) return;
+		const count = this.plugin.repository.queryQuestions({ ...this.filters, statuses: ['active'] }).length;
+		target.setText(`${count} matching active question${count === 1 ? '' : 's'}`);
 	}
 
-	private async start(maxQuestions: number, filters: PracticeFilters): Promise<void> {
-		const candidateCount = this.plugin.repository.queryQuestions({
-			...filters,
-			statuses: ['active'],
-		}).length;
+	private unique(values: string[]): string[] {
+		return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+	}
 
+	private async start(): Promise<void> {
+		const candidateCount = this.plugin.repository.queryQuestions({ ...this.filters, statuses: ['active'] }).length;
 		if (!candidateCount) {
 			new Notice('No active questions match those filters.');
 			return;
 		}
-
-		const session = await this.engine.startSession(filters, {
-			maxQuestions: Math.min(maxQuestions, candidateCount),
+		const session = await this.engine.startSession(this.filters, {
+			maxQuestions: Math.min(this.maxQuestions, candidateCount),
 			allowRepeat: false,
 		});
 		if (!session) {
@@ -159,21 +240,22 @@ export class PracticeView extends ItemView {
 	}
 
 	private async renderQuestion(): Promise<void> {
+		this.cleanupMarkdown();
 		const root = this.contentEl;
 		root.empty();
+		root.addClass('practice-engine-view', 'practice-question-view');
 		const q = this.engine.getCurrentQuestion();
-		if (!q) {
+		const session = this.engine.getSession();
+		if (!q || !session) {
 			this.renderSummary();
 			return;
 		}
+		const header = root.createDiv({ cls: 'practice-question-header' });
+		header.createEl('span', { cls: 'practice-progress-pill', text: `${session.currentIndex + 1} / ${session.maxQuestions ?? session.questionIds.length}` });
+		const meta = header.createSpan({ cls: 'practice-muted', text: `${q.subject} › ${q.topic} · ${q.type} · difficulty ${q.difficulty}` });
+		meta.setAttr('title', q.id);
 
-		const session = this.engine.getSession();
-		root.createEl('p', {
-			text: `Question ${(session?.currentIndex ?? 0) + 1} of ${session?.questionIds.length ?? 0}`,
-		});
-		root.createEl('div', { text: `${q.subject} › ${q.topic} · ${q.type} · difficulty ${q.difficulty}` });
-		const strategy = this.engine.getCurrentSelectionStrategy();
-		if (strategy.startsWith('caesar-')) {
+		if (this.engine.getCurrentSelectionStrategy().startsWith('caesar-')) {
 			const explain = root.createDiv({ cls: 'caesar-decision-summary' });
 			explain.createEl('strong', { text: 'CAESAR adaptive' });
 			const factors = this.engine.getCurrentSelectionFactors();
@@ -181,107 +263,116 @@ export class PracticeView extends ItemView {
 			if (reason) explain.createEl('span', { text: reason });
 			const details = explain.createEl('details');
 			details.createEl('summary', { text: 'Why this question?' });
-			for (const factor of factors) details.createEl('div', { text: `• ${factor}` });
+			for (const factor of factors) details.createEl('div', { text: factor });
 		}
 
-		root.createEl('h2', { text: q.question });
+		const questionBlock = root.createDiv({ cls: 'practice-rendered-content practice-question-content' });
+		await this.renderContent(q.question, questionBlock);
 
-		const feedback = root.createDiv();
-
+		const feedback = root.createDiv({ cls: 'practice-feedback' });
+		const answerArea = root.createDiv({ cls: 'practice-answer-area' });
 		if (q.type === 'mcq' || q.type === 'multiple-select') {
 			const optionInputs: HTMLInputElement[] = [];
+			const optionsBlock = answerArea.createDiv({ cls: 'practice-options' });
 			for (const option of q.options ?? []) {
-				const label = root.createEl('label');
+				const label = optionsBlock.createEl('label', { cls: 'practice-option' });
 				const input = label.createEl('input', { type: q.type === 'mcq' ? 'radio' : 'checkbox' });
 				input.name = 'practice-answer';
 				input.value = option.id;
 				optionInputs.push(input);
-				label.appendText(` ${option.id}. ${option.text}`);
+				const optionText = label.createDiv({ cls: 'practice-rendered-content' });
+				await this.renderContent(`${option.id}. ${option.text}`, optionText);
 			}
-
-			new Setting(root)
-				.setName('Confidence')
-				.setDesc('How confident were you before seeing the result? 1–5.')
-				.addDropdown((d) => {
-					for (let i = 1; i <= 5; i++) d.addOption(String(i), String(i));
-					d.setValue('3');
-				})
-				.addButton((b) =>
-					b.setButtonText('Submit answer').setCta().onClick(() => {
-						const selected = optionInputs.filter((x) => x.checked).map((x) => x.value);
-						if (!selected.length) {
-							new Notice('Select an answer first.');
-							return;
-						}
-						const select = root.querySelector('select');
-						const confidence = select instanceof HTMLSelectElement ? Number(select.value) : 3;
-						void this.submitResponse(selected, confidence, feedback);
-					}),
-				);
+			new Setting(answerArea).setName('Confidence').setDesc('How confident were you before seeing the result?')
+				.addDropdown((d) => { for (let i = 1; i <= 5; i++) d.addOption(String(i), String(i)); d.setValue('3'); })
+				.addButton((b) => b.setButtonText('Submit answer').setCta().onClick(() => {
+					const selected = optionInputs.filter((x) => x.checked).map((x) => x.value);
+					if (!selected.length) { new Notice('Select an answer first.'); return; }
+					const select = answerArea.querySelector('select');
+					const confidence = select instanceof HTMLSelectElement ? Number(select.value) : 3;
+					void this.submitResponse(selected, confidence, feedback);
+				}));
 		} else {
-			root.createEl('textarea', { placeholder: 'Type your answer here…' });
-			root.createEl('h3', { text: 'Hints' });
-			const hints = q.hints ?? [];
-			if (!hints.length) {
-				root.createEl('p', { text: 'No hints available.' });
-			} else {
-				for (let i = 0; i < hints.length; i++) {
-					new Setting(root)
-						.setName(`Hint ${i + 1}`)
-						.addButton((b) => b.setButtonText(`Reveal hint ${i + 1}`).onClick(() => {
-							this.engine.useHint(i + 1);
-							root.createEl('p', { text: hints[i] ?? '' });
-						}));
-				}
-			}
-			new Setting(root)
-				.setName('Self-assessment')
-				.setDesc('After comparing with the model answer, record your own assessment.')
-				.addButton((b) => b.setButtonText('Reveal model answer').onClick(() => {
-					this.engine.markAnswerRevealed();
-					feedback.empty();
-					feedback.createEl('h3', { text: 'Model answer' });
-					feedback.createEl('p', { text: q.answer.model });
-					if (q.answer.explanation) feedback.createEl('p', { text: q.answer.explanation });
-				}))
-				.addButton((b) => b.setButtonText('Correct').onClick(() => void this.submitOpenResponse('correct', feedback)))
-				.addButton((b) => b.setButtonText('Partial').onClick(() => void this.submitOpenResponse('partial', feedback)))
-				.addButton((b) => b.setButtonText('Incorrect').onClick(() => void this.submitOpenResponse('incorrect', feedback)));
+			const textarea = answerArea.createEl('textarea', { cls: 'practice-answer-input', placeholder: 'Type your answer here…' });
+			textarea.rows = 7;
+			this.renderHints(answerArea, q, feedback);
+			const controls = new Setting(answerArea).setName('Self-assessment').setDesc('Reveal the model answer, then record your assessment.');
+			controls.addButton((b) => b.setButtonText('Reveal answer').onClick(() => void this.revealAnswer(q, feedback)));
+			controls.addButton((b) => b.setButtonText('Correct').onClick(() => void this.submitOpenResponse('correct', feedback)));
+			controls.addButton((b) => b.setButtonText('Partial').onClick(() => void this.submitOpenResponse('partial', feedback)));
+			controls.addButton((b) => b.setButtonText('Incorrect').onClick(() => void this.submitOpenResponse('incorrect', feedback)));
+			void textarea;
 		}
+		if ((q.type === 'mcq' || q.type === 'multiple-select')) this.renderHints(answerArea, q, feedback);
+	}
 
-		if ((q.type === 'mcq' || q.type === 'multiple-select') && q.hints?.length) {
-			root.createEl('h3', { text: 'Hints' });
-			q.hints.forEach((hint, index) => {
-				new Setting(root)
-					.setName(`Hint ${index + 1}`)
-					.addButton((b) => b.setButtonText(`Reveal hint ${index + 1}`).onClick(() => {
-						this.engine.useHint(index + 1);
-						feedback.createEl('p', { text: hint });
-					}));
+	private renderHints(parent: HTMLElement, q: Question, feedback: HTMLElement): void {
+		const hints = q.hints ?? [];
+		const wrap = parent.createDiv({ cls: 'practice-reveal-area' });
+		wrap.createEl('h3', { text: 'Hints' });
+		if (!hints.length) wrap.createEl('p', { cls: 'practice-muted', text: 'No hints available.' });
+		for (let i = 0; i < hints.length; i++) {
+			const item = wrap.createDiv({ cls: 'practice-hint-item' });
+			const button = item.createEl('button', { text: `Reveal hint ${i + 1}` });
+			button.addEventListener('click', () => {
+				this.engine.useHint(i + 1);
+				button.disabled = true;
+				const content = item.createDiv({ cls: 'practice-revealed-content practice-rendered-content' });
+				void this.renderContent(hints[i] ?? '', content);
+				feedback.empty();
 			});
+		}
+	}
+
+	private async revealAnswer(q: Question, feedback: HTMLElement): Promise<void> {
+		this.engine.markAnswerRevealed();
+		const answer = feedback.createDiv({ cls: 'practice-reveal-card' });
+		answer.createEl('h3', { text: 'Model answer' });
+		const model = answer.createDiv({ cls: 'practice-rendered-content' });
+		await this.renderContent(q.answer.model, model);
+		if (q.answer.explanation) {
+			answer.createEl('h4', { text: 'Explanation' });
+			const explanation = answer.createDiv({ cls: 'practice-rendered-content' });
+			await this.renderContent(q.answer.explanation, explanation);
+		}
+		if (q.answer.working) {
+			answer.createEl('h4', { text: 'Working' });
+			const working = answer.createDiv({ cls: 'practice-rendered-content' });
+			await this.renderContent(q.answer.working, working);
+		}
+	}
+
+	private async renderContent(markdown: string, container: HTMLElement): Promise<void> {
+		try {
+			const component = await renderMarkdownContent(markdown, container, this.app.vault.getName());
+			this.markdownComponents.push(component);
+		} catch {
+			container.empty();
+			container.createEl('pre', { text: markdown });
+			container.addClass('practice-render-error');
 		}
 	}
 
 	private async submitResponse(response: unknown, confidence: number, feedback: HTMLElement): Promise<void> {
 		const event = await this.engine.answer(response, confidence);
 		if (!event) return;
-		feedback.empty();
-		feedback.createEl('strong', { text: event.result === 'correct' ? 'Correct' : 'Incorrect' });
-		const next = feedback.createEl('button', { text: 'Next question' });
-		next.addEventListener('click', () => void this.advance());
+		this.renderResultFeedback(feedback, event.result, event.score);
 	}
 
 	private async submitOpenResponse(result: 'correct' | 'partial' | 'incorrect', feedback: HTMLElement): Promise<void> {
 		const textarea = this.contentEl.querySelector('textarea');
-		const event = await this.engine.answer(
-			textarea instanceof HTMLTextAreaElement ? textarea.value : '',
-			3,
-			result,
-		);
+		const event = await this.engine.answer(textarea instanceof HTMLTextAreaElement ? textarea.value : '', 3, result);
 		if (!event) return;
+		this.renderResultFeedback(feedback, event.result, event.score);
+	}
+
+	private renderResultFeedback(feedback: HTMLElement, result: string, score?: number): void {
 		feedback.empty();
-		feedback.createEl('strong', { text: `Recorded as ${result}.` });
-		const next = feedback.createEl('button', { text: 'Next question' });
+		feedback.addClass(`practice-result-${result}`);
+		const card = feedback.createDiv({ cls: 'practice-result-card' });
+		card.createEl('strong', { text: result === 'correct' ? 'Correct' : result === 'partial' ? 'Partially correct' : 'Incorrect' });
+		if (typeof score === 'number') card.createEl('span', { text: `Score: ${Math.round(score * 100)}%` });
+		const next = card.createEl('button', { text: 'Next question', cls: 'practice-primary-button' });
 		next.addEventListener('click', () => void this.advance());
 	}
 
@@ -293,8 +384,18 @@ export class PracticeView extends ItemView {
 	private renderSummary(): void {
 		const root = this.contentEl;
 		root.empty();
+		root.addClass('practice-engine-view', 'practice-summary-view');
 		root.createEl('h2', { text: 'Practice complete' });
-		root.createEl('p', { text: 'Your attempt evidence has been saved locally.' });
-		new Setting(root).addButton((b) => b.setButtonText('Start another session').onClick(() => this.renderSetup()));
+		root.createEl('p', { cls: 'practice-muted', text: 'Your attempt evidence has been saved locally.' });
+		const actions = root.createDiv({ cls: 'practice-summary-actions' });
+		const again = actions.createEl('button', { text: 'Start another session', cls: 'practice-primary-button' });
+		again.addEventListener('click', () => this.renderSetup());
+		const progress = actions.createEl('button', { text: 'View progress' });
+		progress.addEventListener('click', () => void this.plugin.activateProgressView());
+	}
+
+	private cleanupMarkdown(): void {
+		for (const component of this.markdownComponents) component.unload();
+		this.markdownComponents = [];
 	}
 }

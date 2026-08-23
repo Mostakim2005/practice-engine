@@ -1,181 +1,123 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
-import {
-	CognitiveLevel,
-	Question,
-	QuestionFamily,
-	QuestionType,
-} from '../types/question';
+import { Question, CognitiveLevel, QuestionFamily, QuestionType } from '../types/question';
+import { renderMarkdownContent } from './MarkdownContent';
+import type { Component } from 'obsidian';
 
-const QUESTION_TYPES: QuestionType[] = [
-	'mcq',
-	'multiple-select',
-	'true-false',
-	'written',
-	'numerical',
-	'matching',
-	'ordering',
-	'identification',
-	'viva',
-	'multi-part',
-];
-
-const COGNITIVE_LEVELS: CognitiveLevel[] = [
-	'recall',
-	'understanding',
-	'application',
-	'analysis',
-	'evaluation',
-	'creation',
-];
-
-const QUESTION_FAMILIES: QuestionFamily[] = [
-	'fact-recall',
-	'conceptual',
-	'calculation',
-	'comparison',
-	'interpretation',
-	'diagnosis',
-	'troubleshooting',
-	'scenario',
-	'procedure',
-	'design-decision',
-	'diagram-analysis',
-	'data-analysis',
-	'identification',
-	'sequencing',
-	'reasoning',
-];
-
-export interface QuestionEditPayload {
-	question: Question;
-}
+const QUESTION_TYPES: QuestionType[] = ['mcq', 'multiple-select', 'true-false', 'written', 'numerical', 'matching', 'ordering', 'identification', 'viva', 'multi-part'];
+const COGNITIVE_LEVELS: CognitiveLevel[] = ['recall', 'understanding', 'application', 'analysis', 'evaluation', 'creation'];
+const QUESTION_FAMILIES: QuestionFamily[] = ['fact-recall', 'conceptual', 'calculation', 'comparison', 'interpretation', 'diagnosis', 'troubleshooting', 'scenario', 'procedure', 'design-decision', 'diagram-analysis', 'data-analysis', 'identification', 'sequencing', 'reasoning'];
 
 export class QuestionEditModal extends Modal {
 	private readonly draft: Question;
-	private isNew: boolean;
+	private readonly isNew: boolean;
+	private previewComponents: Component[] = [];
 
-	constructor(
-		app: App,
-		question: Question | null,
-		private readonly saveQuestion: (q: Question) => Promise<void>,
-	) {
+	constructor(app: App, question: Question | null, private readonly saveQuestion: (q: Question) => Promise<void>) {
 		super(app);
 		this.isNew = !question;
-		this.draft =
-			structuredClone(question) ??
-			({
-				id: `DRAFT-${Date.now()}`,
-				version: 1,
-				type: 'mcq',
-				subject: '',
-				topic: '',
-				difficulty: 1,
-				cognitiveLevel: 'recall',
-				questionFamily: 'fact-recall',
-				question: '',
-				options: [
-					{ id: 'A', text: '' },
-					{ id: 'B', text: '' },
-					{ id: 'C', text: '' },
-					{ id: 'D', text: '' },
-				],
-				correctAnswer: ['A'],
-				answer: { short: '', model: '' },
-				status: 'active',
-			} satisfies Question);
+		this.draft = structuredClone(question) ?? ({
+			id: `DRAFT-${Date.now()}`, version: 1, type: 'mcq', subject: '', topic: '', difficulty: 1,
+			cognitiveLevel: 'recall', questionFamily: 'fact-recall', question: '',
+			options: [{ id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }],
+			correctAnswer: ['A'], answer: { short: '', model: '' }, status: 'active',
+		} satisfies Question);
 	}
 
-	onOpen(): void {
-		this.render();
-	}
+	onOpen(): void { this.render(); }
+	onClose(): void { this.cleanupPreviews(); this.contentEl.empty(); }
 
 	private render(): void {
+		this.cleanupPreviews();
 		const e = this.contentEl;
 		e.empty();
+		e.addClass('practice-question-edit-modal');
 		e.createEl('h2', { text: this.isNew ? 'Create question' : `Edit ${this.draft.id}` });
 
-		new Setting(e)
-			.setName('Question ID')
-			.setDesc(this.isNew ? 'Use a stable ID; do not use array position.' : 'ID cannot be changed here.')
-			.addText((t) => t.setValue(this.draft.id).setDisabled(!this.isNew).onChange((v) => (this.draft.id = v.trim())));
+		this.textField(e, 'Question ID', this.draft.id, (v) => (this.draft.id = v.trim()), !this.isNew);
+		this.textField(e, 'Subject', this.draft.subject, (v) => { this.draft.subject = v; });
+		this.textField(e, 'Topic', this.draft.topic, (v) => { this.draft.topic = v; });
+		this.textField(e, 'Subtopic', this.draft.subtopic ?? '', (v) => { this.draft.subtopic = v.trim() || undefined; });
 
-		new Setting(e).setName('Subject').addText((t) => t.setValue(this.draft.subject).onChange((v) => (this.draft.subject = v)));
-		new Setting(e).setName('Topic').addText((t) => t.setValue(this.draft.topic).onChange((v) => (this.draft.topic = v)));
-		new Setting(e).setName('Subtopic').addText((t) => t.setValue(this.draft.subtopic ?? '').onChange((v) => (this.draft.subtopic = v.trim() || undefined)));
+		this.dropdown(e, 'Type', QUESTION_TYPES, this.draft.type, (v) => { this.draft.type = v as QuestionType; this.render(); });
+		this.dropdown(e, 'Difficulty', [1, 2, 3, 4, 5].map(String), String(this.draft.difficulty), (v) => { this.draft.difficulty = Number(v) as 1 | 2 | 3 | 4 | 5; });
+		this.dropdown(e, 'Cognitive level', COGNITIVE_LEVELS, this.draft.cognitiveLevel, (v) => { this.draft.cognitiveLevel = v as CognitiveLevel; });
+		this.dropdown(e, 'Question family', QUESTION_FAMILIES, this.draft.questionFamily, (v) => { this.draft.questionFamily = v as QuestionFamily; });
 
-		new Setting(e).setName('Type').addDropdown((d) => {
-			for (const value of QUESTION_TYPES) d.addOption(value, value);
-			d.setValue(this.draft.type).onChange((v) => {
-				this.draft.type = v as QuestionType;
-				this.render();
-			});
-		});
+		this.largeTextField(e, 'Question', 'Write the question. Markdown and math are supported.', this.draft.question, (v) => { this.draft.question = v; }, true);
+		this.renderPreview(e, 'Question preview', this.draft.question);
 
-		new Setting(e).setName('Difficulty').addDropdown((d) => {
-			for (const value of [1, 2, 3, 4, 5]) d.addOption(String(value), String(value));
-			d.setValue(String(this.draft.difficulty)).onChange((v) => {
-				this.draft.difficulty = Number(v) as 1 | 2 | 3 | 4 | 5;
-			});
-		});
-
-		new Setting(e).setName('Cognitive level').addDropdown((d) => {
-			for (const value of COGNITIVE_LEVELS) d.addOption(value, value);
-			d.setValue(this.draft.cognitiveLevel).onChange((v) => (this.draft.cognitiveLevel = v as CognitiveLevel));
-		});
-
-		new Setting(e).setName('Question family').addDropdown((d) => {
-			for (const value of QUESTION_FAMILIES) d.addOption(value, value);
-			d.setValue(this.draft.questionFamily).onChange((v) => (this.draft.questionFamily = v as QuestionFamily));
-		});
-
-		new Setting(e).setName('Question').addTextArea((t) => t.setValue(this.draft.question).onChange((v) => (this.draft.question = v)));
-
-		const options = this.draft.options;
-		if (options) {
+		if (this.draft.options) {
 			e.createEl('h3', { text: 'Options' });
-			options.forEach((option, index) => {
-				new Setting(e)
-					.setName(`Option ${option.id}`)
-					.addText((t) =>
-						t
-							.setValue(option.text ?? '')
-							.onChange((v) => {
-								const current = options[index];
-								if (current) current.text = v;
-							}),
-					)
-					.addExtraButton((b) =>
-						b.setIcon('trash-2').setTooltip('Remove option').onClick(() => {
-							options.splice(index, 1);
-							this.render();
-						}),
-					);
-			});
-			new Setting(e).addButton((b) =>
-				b.setButtonText('Add option').onClick(() => {
-					const next = String.fromCharCode(65 + options.length);
-					options.push({ id: next, text: '' });
+			this.draft.options.forEach((option, index) => {
+				this.largeTextField(e, `Option ${option.id}`, 'Markdown and math supported.', option.text, (v) => { option.text = v; }, false, true, () => {
+					this.draft.options?.splice(index, 1);
 					this.render();
-				}),
-			);
-			new Setting(e).setName('Correct option ids').addText((t) =>
-				t
-					.setValue((this.draft.correctAnswer ?? []).join(','))
-					.setPlaceholder('A or a,b')
-					.onChange((v) => (this.draft.correctAnswer = v.split(',').map((x) => x.trim()).filter(Boolean))),
-			);
+				});
+			});
+			new Setting(e).addButton((b) => b.setButtonText('Add option').onClick(() => {
+				const next = String.fromCharCode(65 + (this.draft.options?.length ?? 0));
+				this.draft.options?.push({ id: next, text: '' });
+				this.render();
+			}));
+			this.textField(e, 'Correct option IDs', (this.draft.correctAnswer ?? []).join(','), (v) => {
+				this.draft.correctAnswer = v.split(',').map((x) => x.trim()).filter(Boolean);
+			});
 		}
 
-		new Setting(e).setName('Hint 1').addTextArea((t) => t.setValue(this.draft.hints?.[0] ?? '').onChange((v) => this.setHint(0, v)));
-		new Setting(e).setName('Hint 2').addTextArea((t) => t.setValue(this.draft.hints?.[1] ?? '').onChange((v) => this.setHint(1, v)));
-		new Setting(e).setName('Short answer').addTextArea((t) => t.setValue(this.draft.answer.short).onChange((v) => (this.draft.answer.short = v)));
-		new Setting(e).setName('Model answer').addTextArea((t) => t.setValue(this.draft.answer.model).onChange((v) => (this.draft.answer.model = v)));
-		new Setting(e).setName('Explanation').addTextArea((t) => t.setValue(this.draft.answer.explanation ?? '').onChange((v) => (this.draft.answer.explanation = v.trim() || undefined)));
-		new Setting(e).setName('Working').addTextArea((t) => t.setValue(this.draft.answer.working ?? '').onChange((v) => (this.draft.answer.working = v.trim() || undefined)));
+		this.largeTextField(e, 'Hint 1', 'Optional hint.', this.draft.hints?.[0] ?? '', (v) => this.setHint(0, v));
+		this.largeTextField(e, 'Hint 2', 'Optional hint.', this.draft.hints?.[1] ?? '', (v) => this.setHint(1, v));
+		this.largeTextField(e, 'Short answer', 'Required. Concise expected result.', this.draft.answer.short, (v) => { this.draft.answer.short = v; });
+		this.largeTextField(e, 'Model answer', 'Required. Full answer.', this.draft.answer.model, (v) => { this.draft.answer.model = v; }, true);
+		this.renderPreview(e, 'Model answer preview', this.draft.answer.model);
+		this.largeTextField(e, 'Explanation', 'Optional explanation.', this.draft.answer.explanation ?? '', (v) => { this.draft.answer.explanation = v.trim() || undefined; }, true);
+		this.largeTextField(e, 'Working', 'Optional calculations or solution steps.', this.draft.answer.working ?? '', (v) => { this.draft.answer.working = v.trim() || undefined; }, true);
 
 		new Setting(e)
 			.addButton((b) => b.setButtonText('Save question').setCta().onClick(() => void this.save()))
 			.addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));
+	}
+
+	private textField(parent: HTMLElement, name: string, value: string, onChange: (value: string) => void, disabled = false): void {
+		new Setting(parent).setName(name).addText((t) => t.setValue(value).setDisabled(disabled).onChange(onChange));
+	}
+
+	private dropdown(parent: HTMLElement, name: string, values: string[], value: string, onChange: (value: string) => void): void {
+		new Setting(parent).setName(name).addDropdown((d) => { for (const item of values) d.addOption(item, item); d.setValue(value).onChange(onChange); });
+	}
+
+	private largeTextField(parent: HTMLElement, name: string, desc: string, value: string, onChange: (value: string) => void, previewable = false, removable = false, remove?: () => void): void {
+		const setting = new Setting(parent).setName(name).setDesc(desc);
+		const textarea = setting.controlEl.createEl('textarea');
+		textarea.value = value;
+		textarea.rows = 6;
+		textarea.className = 'practice-large-textarea';
+		textarea.addEventListener('input', () => onChange(textarea.value));
+		if (removable && remove) setting.addExtraButton((b) => b.setIcon('trash-2').setTooltip('Remove').onClick(remove));
+		if (previewable) {
+			const preview = parent.createDiv({ cls: 'practice-editor-preview' });
+			preview.createEl('small', { text: 'Live preview' });
+			const content = preview.createDiv({ cls: 'practice-rendered-content' });
+			void this.renderPreviewContent(value, content);
+			textarea.addEventListener('input', () => void this.renderPreviewContent(textarea.value, content));
+		}
+	}
+
+	private renderPreview(parent: HTMLElement, heading: string, markdown: string): void {
+		const preview = parent.createDiv({ cls: 'practice-editor-preview' });
+		preview.createEl('small', { text: heading });
+		const content = preview.createDiv({ cls: 'practice-rendered-content' });
+		void this.renderPreviewContent(markdown, content);
+	}
+
+	private async renderPreviewContent(markdown: string, container: HTMLElement): Promise<void> {
+		try {
+			const component = await renderMarkdownContent(markdown, container, this.app.vault.getName());
+			this.previewComponents.push(component);
+		} catch {
+			container.empty();
+			container.createEl('pre', { text: markdown });
+			container.addClass('practice-render-error');
+		}
 	}
 
 	private setHint(index: number, value: string): void {
@@ -192,7 +134,7 @@ export class QuestionEditModal extends Modal {
 			return;
 		}
 		if (q.type === 'mcq' && q.correctAnswer?.length !== 1) {
-			new Notice('Mcq must have exactly one correct option.');
+			new Notice('MCQ must have exactly one correct option.');
 			return;
 		}
 		q.updatedAt = new Date().toISOString();
@@ -206,7 +148,8 @@ export class QuestionEditModal extends Modal {
 		}
 	}
 
-	onClose(): void {
-		this.contentEl.empty();
+	private cleanupPreviews(): void {
+		for (const component of this.previewComponents) component.unload();
+		this.previewComponents = [];
 	}
 }
