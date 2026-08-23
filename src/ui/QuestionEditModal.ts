@@ -111,7 +111,7 @@ export class QuestionEditModal extends Modal {
 
 	private async renderPreviewContent(markdown: string, container: HTMLElement): Promise<void> {
 		try {
-			const component = await renderMarkdownContent(markdown, container, this.app.vault.getName());
+			const component = await renderMarkdownContent(this.app, markdown, container, this.app.vault.getName());
 			this.previewComponents.push(component);
 		} catch {
 			container.empty();

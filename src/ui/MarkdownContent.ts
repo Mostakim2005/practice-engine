@@ -1,9 +1,14 @@
-import { Component, MarkdownRenderer } from 'obsidian';
+import { App, Component, MarkdownRenderer } from 'obsidian';
 
-export async function renderMarkdownContent(markdown: string, container: HTMLElement, sourcePath = ''): Promise<Component> {
+export async function renderMarkdownContent(
+	app: App,
+	markdown: string,
+	container: HTMLElement,
+	sourcePath = '',
+): Promise<Component> {
 	container.empty();
 	const component = new Component();
-	await MarkdownRenderer.render(markdown, container, sourcePath, component);
+	await MarkdownRenderer.render(app, markdown, container, sourcePath, component);
 	component.load();
 	return component;
 }

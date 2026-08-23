@@ -344,7 +344,7 @@ export class PracticeView extends ItemView {
 
 	private async renderContent(markdown: string, container: HTMLElement): Promise<void> {
 		try {
-			const component = await renderMarkdownContent(markdown, container, this.app.vault.getName());
+			const component = await renderMarkdownContent(this.app, markdown, container, this.app.vault.getName());
 			this.markdownComponents.push(component);
 		} catch {
 			container.empty();
