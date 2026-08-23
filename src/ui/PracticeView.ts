@@ -124,9 +124,9 @@ export class PracticeView extends ItemView {
 		this.filters.subtopic = subtopic;
 		this.filters.knowledgeConcepts = this.optionalArray(selects.get('knowledgeConcepts')?.value);
 		this.filters.applicationDomains = this.optionalArray(selects.get('applicationDomains')?.value);
-		this.filters.cognitiveLevels = this.optionalArray(selects.get('cognitiveLevels')?.value as CognitiveLevel | undefined) as CognitiveLevel[] | undefined;
-		this.filters.questionFamilies = this.optionalArray(selects.get('questionFamilies')?.value as QuestionFamily | undefined) as QuestionFamily[] | undefined;
-		this.filters.types = this.optionalArray(selects.get('types')?.value as QuestionType | undefined) as QuestionType[] | undefined;
+		this.filters.cognitiveLevels = this.optionalArray(selects.get('cognitiveLevels')?.value) as CognitiveLevel[] | undefined;
+		this.filters.questionFamilies = this.optionalArray(selects.get('questionFamilies')?.value) as QuestionFamily[] | undefined;
+		this.filters.types = this.optionalArray(selects.get('types')?.value) as QuestionType[] | undefined;
 		const difficulty = selects.get('difficulties')?.value;
 		this.filters.difficulties = difficulty ? [Number(difficulty)] : undefined;
 	}
@@ -251,7 +251,7 @@ export class PracticeView extends ItemView {
 			return;
 		}
 		const header = root.createDiv({ cls: 'practice-question-header' });
-		header.createEl('span', { cls: 'practice-progress-pill', text: `${session.currentIndex + 1} / ${session.maxQuestions ?? session.questionIds.length}` });
+		header.createSpan({ cls: 'practice-progress-pill', text: `${session.currentIndex + 1} / ${session.maxQuestions ?? session.questionIds.length}` });
 		const meta = header.createSpan({ cls: 'practice-muted', text: `${q.subject} › ${q.topic} · ${q.type} · difficulty ${q.difficulty}` });
 		meta.setAttr('title', q.id);
 
@@ -260,10 +260,10 @@ export class PracticeView extends ItemView {
 			explain.createEl('strong', { text: 'CAESAR adaptive' });
 			const factors = this.engine.getCurrentSelectionFactors();
 			const reason = factors.find((factor) => factor.includes('Phase=') || factor.includes('Phase:'));
-			if (reason) explain.createEl('span', { text: reason });
+			if (reason) explain.createSpan({ text: reason });
 			const details = explain.createEl('details');
 			details.createEl('summary', { text: 'Why this question?' });
-			for (const factor of factors) details.createEl('div', { text: factor });
+			for (const factor of factors) details.createDiv({ text: factor });
 		}
 
 		const questionBlock = root.createDiv({ cls: 'practice-rendered-content practice-question-content' });
@@ -371,7 +371,7 @@ export class PracticeView extends ItemView {
 		feedback.addClass(`practice-result-${result}`);
 		const card = feedback.createDiv({ cls: 'practice-result-card' });
 		card.createEl('strong', { text: result === 'correct' ? 'Correct' : result === 'partial' ? 'Partially correct' : 'Incorrect' });
-		if (typeof score === 'number') card.createEl('span', { text: `Score: ${Math.round(score * 100)}%` });
+		if (typeof score === 'number') card.createSpan({ text: `Score: ${Math.round(score * 100)}%` });
 		const next = card.createEl('button', { text: 'Next question', cls: 'practice-primary-button' });
 		next.addEventListener('click', () => void this.advance());
 	}

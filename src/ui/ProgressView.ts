@@ -63,7 +63,7 @@ export class ProgressView extends ItemView {
 			if (!q) continue;
 			const row = section.createDiv({ cls: 'practice-progress-row' });
 			row.createEl('strong', { text: q.subject });
-			row.createEl('span', { text: `${q.topic}${q.subtopic ? ` › ${q.subtopic}` : ''}` });
+			row.createSpan({ text: `${q.topic}${q.subtopic ? ` › ${q.subtopic}` : ''}` });
 		}
 	}
 
@@ -88,7 +88,7 @@ export class ProgressView extends ItemView {
 		for (const [topic, data] of [...byTopic.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 20)) {
 			const row = section.createDiv({ cls: 'practice-progress-row' });
 			row.createEl('strong', { text: topic });
-			row.createEl('span', { text: `${data.correct}/${data.attempts} correct` });
+			row.createSpan({ text: `${data.correct}/${data.attempts} correct` });
 		}
 	}
 
@@ -104,7 +104,7 @@ export class ProgressView extends ItemView {
 			const row = section.createDiv({ cls: 'practice-progress-row' });
 			const max = session.maxQuestions ?? session.questionIds.length;
 			row.createEl('strong', { text: session.status });
-			row.createEl('span', { text: `${new Date(session.createdAt).toLocaleString()} · ${session.currentIndex}/${max}` });
+			row.createSpan({ text: `${new Date(session.createdAt).toLocaleString()} · ${session.currentIndex}/${max}` });
 		}
 	}
 }

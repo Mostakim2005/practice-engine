@@ -134,7 +134,7 @@ export class QuestionEditModal extends Modal {
 			return;
 		}
 		if (q.type === 'mcq' && q.correctAnswer?.length !== 1) {
-			new Notice('MCQ must have exactly one correct option.');
+			new Notice('Mcq must have exactly one correct option.');
 			return;
 		}
 		q.updatedAt = new Date().toISOString();
