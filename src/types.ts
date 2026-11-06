@@ -1,36 +1,28 @@
-export type CognitiveType = 'recall' | 'conceptual' | 'procedural' | 'calculation';
-
-export type RetrievalEffort = 
-    | 'FAST_CONFIDENT'   // Immediate recall with high confidence
-    | 'EFFORTFUL'        // Recalled after deliberate struggle
-    | 'EDUCATED_GUESS'   // Uncertain / weak intuition
-    | 'BLANK';           // Complete retrieval failure
-
-export type ConceptualAccuracy = 
-    | 'FLAWLESS'         // Correct mechanics and concepts
-    | 'FACTUAL_SLIP'     // Understood concept, minor math/detail slip
-    | 'PARTIAL_CONCEPTS' // Some concepts right, others missed
-    | 'CONCEPTUAL_FLAW'  // Fundamental misconception (severe penalty if confident)
-    | 'TOTAL_FAILURE';   // Completely incorrect
-
-export interface CardMetadata {
-    due: string;         // YYYY-MM-DD
-    interval: number;    // Days
-    reps: number;
-    difficulty: number;  // 1.0 (Easy) to 5.0 (Hard)
-    history: string[];   // ["2026-10-12:FC:FL"]
+// Practice Engine — faithful types from live Nihon 2.1.0 bundle (4021 lines)
+export interface VisibleColumns {
+  topic: boolean;
+  subject: boolean;
+  type: boolean;
+  difficulty: boolean;
+  interval: boolean;
+  reps: boolean;
+  due: boolean;
 }
 
-export interface PracticeCard {
-    id: string;
-    filePath: string;
-    topic: string;
-    sourceLecture?: string;
-    lineStart: number;
-    lineEnd: number;
-    type: CognitiveType;
-    concepts: string[];
-    questionRaw: string;
-    answerRaw: string;
-    metadata: CardMetadata;
+export interface PracticeSettings {
+  practiceFolder: string;
+  attachmentFolder: string;
+  schedulerMode: "fsrs" | "sm2";
+  targetRetention: number;
+  cardFormat: "callout" | "block";
+  creationMode: "modal" | "direct";
+  enableLatexToolboxBridge: boolean;
+  enableNoteToolboxBridge: boolean;
+  enableNaturalMathEngine: boolean;
+  enableSmartMathTyping: boolean;
+  previewLines: string;
+  visibleColumns: VisibleColumns;
+  lastTopicPath: string;
+  glassmorphism: boolean;
+  cardDraft: null;
 }
