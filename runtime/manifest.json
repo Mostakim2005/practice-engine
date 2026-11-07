@@ -1,0 +1,11 @@
+﻿{
+  "id": "practice-engine",
+  "name": "Practice Engine",
+  "version": "2.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Topic-based active recall and spaced repetition with two-stage metacognitive review, AI auto-extraction, and interactive card database.",
+  "author": "Mostakim2005",
+	"authorUrl": "https://github.com/Mostakim2005",
+  "isDesktopOnly": false
+}
+
