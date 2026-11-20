@@ -113,7 +113,7 @@ class PracticeEngineSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl).setName("Practice Engine v3 Settings").setHeading();
+    new Setting(containerEl).setName("Spaced repetition & synchronization").setHeading();
 
     new Setting(containerEl)
       .setName("Anki Sync Backend")
