@@ -413,6 +413,13 @@ function convertNaturalMathToLatex(rawInput) {
 /* FSRS & SM-2 Metacognitive Scheduling Engine                        */
 /* ------------------------------------------------------------------ */
 
+function isLeechCard(meta, lapseThreshold = 5) {
+  if (!meta) return false;
+  if ((meta.lapses || 0) >= lapseThreshold) return true;
+  const recent = (meta.hist || []).slice(-5);
+  return recent.filter((h) => h.endsWith(':CF')).length >= 2;
+}
+
 function calculateNextReview(meta, effortId, accuracyId, today, settings) {
   const mode = (settings && settings.schedulerMode) || 'fsrs';
   const targetRetention = (settings && settings.targetRetention) || 0.90;
@@ -495,7 +502,8 @@ function calculateNextReviewFSRS(meta, effortId, accuracyId, today, targetRetent
     }
   }
 
-  const factor = Math.log(targetRetention) / Math.log(0.90);
+  const safeRetention = Math.min(0.99, Math.max(0.5, Number(targetRetention) || 0.9));
+  const factor = Math.log(safeRetention) / Math.log(0.9);
   next.ivl = Math.max(1, Math.round(next.s * factor));
   next.due = addDays(today, next.ivl);
 
@@ -794,18 +802,28 @@ function parseImport(raw) {
 /* Masking Tape & Cloze Engine Renderer                               */
 /* ------------------------------------------------------------------ */
 
+function escapeHtmlEntities(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function processClozeAndTapeMarkdown(rawMd, isAnswerPhase) {
   if (!rawMd) return '';
   let text = rawMd;
 
   text = text.replace(/==tape::(.*?)(?:::([^=]+))?==/g, (match, content, label) => {
-    const lbl = label ? label.trim() : 'MASKED';
-    return `<span class="pe-masking-tape ${isAnswerPhase ? 'is-peeled' : ''}" data-state="${isAnswerPhase ? 'peeled' : 'masked'}" title="Click to peel tape"><span class="pe-tape-banner"><span class="pe-tape-icon">🩹</span> <span class="pe-tape-lbl">${lbl}</span></span><span class="pe-tape-content">${content}</span></span>`;
+    const lbl = escapeHtmlEntities(label ? label.trim() : 'MASKED');
+    const safeContent = escapeHtmlEntities(content);
+    return `<span class="pe-masking-tape ${isAnswerPhase ? 'is-peeled' : ''}" data-state="${isAnswerPhase ? 'peeled' : 'masked'}" title="Click to peel tape"><span class="pe-tape-banner"><span class="pe-tape-icon">🩹</span> <span class="pe-tape-lbl">${lbl}</span></span><span class="pe-tape-content">${safeContent}</span></span>`;
   });
 
   text = text.replace(/%%tape(?:::([^%]+))?::(.*?)%%/g, (match, label, content) => {
-    const lbl = label ? label.trim() : 'MASKED';
-    return `<span class="pe-masking-tape ${isAnswerPhase ? 'is-peeled' : ''}" data-state="${isAnswerPhase ? 'peeled' : 'masked'}" title="Click to peel tape"><span class="pe-tape-banner"><span class="pe-tape-icon">🩹</span> <span class="pe-tape-lbl">${lbl}</span></span><span class="pe-tape-content">${content}</span></span>`;
+    const lbl = escapeHtmlEntities(label ? label.trim() : 'MASKED');
+    const safeContent = escapeHtmlEntities(content);
+    return `<span class="pe-masking-tape ${isAnswerPhase ? 'is-peeled' : ''}" data-state="${isAnswerPhase ? 'peeled' : 'masked'}" title="Click to peel tape"><span class="pe-tape-banner"><span class="pe-tape-icon">🩹</span> <span class="pe-tape-lbl">${lbl}</span></span><span class="pe-tape-content">${safeContent}</span></span>`;
   });
 
   text = text.replace(/==((?!tape::).*?)==/g, (match, content) => {
@@ -1870,8 +1888,19 @@ class QuestionEditorModal extends Modal {
 
       const bActions = banner.createDiv({ attr: { style: 'display: flex; gap: 0.5rem;' } });
       const discardBtn = bActions.createEl('button', { cls: 'pe-btn-secondary pe-btn-xs', text: 'Discard Draft' });
+      let discardArmed = false;
+      let discardTimer = null;
       discardBtn.onclick = async () => {
-        if (!confirm('Are you sure you want to discard your draft? This cannot be undone.')) return;
+        if (!discardArmed) {
+          discardArmed = true;
+          discardBtn.setText('Confirm Discard?');
+          discardTimer = setTimeout(() => {
+            discardArmed = false;
+            discardBtn.setText('Discard Draft');
+          }, 4000);
+          return;
+        }
+        if (discardTimer) clearTimeout(discardTimer);
         this.plugin.settings.cardDraft = null;
         await this.plugin.saveSettings();
         this.isDraftRestored = false;
@@ -3028,9 +3057,13 @@ class PracticeView extends ItemView {
       };
     });
 
-    window.addEventListener('click', () => {
+    if (this._colPopoverClickHandler) {
+      window.removeEventListener('click', this._colPopoverClickHandler);
+    }
+    this._colPopoverClickHandler = () => {
       if (colPopover.style.display !== 'none') colPopover.style.display = 'none';
-    });
+    };
+    window.addEventListener('click', this._colPopoverClickHandler);
     colPopover.onclick = (e) => e.stopPropagation();
 
     const selectBar = toolbar.createDiv({ cls: 'pe-batch-actions' });
@@ -3614,7 +3647,6 @@ module.exports = class PracticeEnginePlugin extends Plugin {
 
   onunload() {
     document.body.removeClass('pe-glassmorphic');
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE);
   }
 
   applyThemePreferences() {
@@ -3626,6 +3658,7 @@ module.exports = class PracticeEnginePlugin extends Plugin {
   }
 
   async saveSettings() {
+    this._subjectsCache = null;
     await this.saveData(this.settings);
   }
 
@@ -3661,6 +3694,9 @@ module.exports = class PracticeEnginePlugin extends Plugin {
   }
 
   getAllSubjects() {
+    if (this._subjectsCache && Date.now() - this._subjectsCache.at < 30000) {
+      return this._subjectsCache.list;
+    }
     const subjects = new Set(['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'Electrical Engineering', 'General']);
     this.app.vault.getMarkdownFiles().forEach((file) => {
       const cache = this.app.metadataCache.getFileCache(file);

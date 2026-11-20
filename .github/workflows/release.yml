@@ -21,10 +21,14 @@ jobs:
                   node-version: 24
                   cache: 'npm'
 
-            - name: Build plugin
+            - name: Prepare release assets
               run: |
                   npm ci
                   npm run build
+                  if [ -f runtime/main.js ]; then
+                    cp runtime/main.js main.js
+                    cp runtime/styles.css styles.css
+                  fi
 
             - name: Check for optional styles
               id: styles

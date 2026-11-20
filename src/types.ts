@@ -24,5 +24,5 @@ export interface PracticeSettings {
   visibleColumns: VisibleColumns;
   lastTopicPath: string;
   glassmorphism: boolean;
-  cardDraft: null;
+  cardDraft: Record<string, unknown> | null;
 }

@@ -29,16 +29,24 @@ export interface CardMeta {
   hist: string[];
 }
 
+export const MINIMUM_INTERVAL_GUARD = 1;
+
+function fmtLocalDate(d: Date): string {
+  const p = (v: number) => String(v).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function addDays(today: string, n: number): string {
-  const d = new Date(today + "T00:00:00");
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = today.split("-").map(Number);
+  return fmtLocalDate(new Date(y!, (m! || 1) - 1, (d! || 1) + Math.round(n)));
 }
 
 function daysBetween(a: string, b: string): number {
-  const da = new Date(a + "T00:00:00").getTime();
-  const db = new Date(b + "T00:00:00").getTime();
-  return Math.round((db - da) / (1000 * 60 * 60 * 24));
+  const [y1, m1, d1] = a.split("-").map(Number);
+  const [y2, m2, d2] = b.split("-").map(Number);
+  const da = new Date(y1!, (m1! || 1) - 1, d1! || 1).getTime();
+  const db = new Date(y2!, (m2! || 1) - 1, d2! || 1).getTime();
+  return Math.max(0, Math.round((db - da) / (1000 * 60 * 60 * 24)));
 }
 
 function generateCardId(): string {
@@ -112,8 +120,9 @@ export function calculateNextReviewFSRS(meta: Partial<CardMeta>, effortId: strin
     }
   }
 
-  const factor = Math.log(targetRetention) / Math.log(0.9);
-  next.ivl = Math.max(1, Math.round(next.s * factor));
+  const safeRetention = Math.min(0.99, Math.max(0.5, Number(targetRetention) || 0.9));
+  const factor = Math.log(safeRetention) / Math.log(0.9);
+  next.ivl = Math.max(MINIMUM_INTERVAL_GUARD, Math.round(next.s * factor));
   next.due = addDays(today, next.ivl);
   next.hist.push(`${today}:${effort.code}:${acc.code}`);
   next.hist = next.hist.slice(-10);
@@ -160,4 +169,13 @@ export function calculateNextReviewSM2(meta: Partial<CardMeta>, effortId: string
   next.hist.push(`${today}:${effort.code}:${acc.code}`);
   next.hist = next.hist.slice(-10);
   return next;
+}
+
+export const calculateNextReviewInterval = calculateNextReview;
+
+export function isLeechCard(meta: Partial<CardMeta>, lapseThreshold = 5): boolean {
+  if ((meta.lapses ?? 0) >= lapseThreshold) return true;
+  const recent = (meta.hist ?? []).slice(-5);
+  const cfCount = recent.filter((h) => h.endsWith(':CF')).length;
+  return cfCount >= 2;
 }
