@@ -11,7 +11,8 @@ export default class PracticeEnginePlugin extends Plugin {
   anki!: AnkiBridge;
 
   async onload(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) ?? {});
+    const loaded = (await this.loadData()) as Record<string, unknown> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
     if (!this.settings.visibleColumns) {
       this.settings.visibleColumns = Object.assign({}, DEFAULT_SETTINGS.visibleColumns);
     }
@@ -112,7 +113,7 @@ class PracticeEngineSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Practice Engine v3 Settings" });
+    new Setting(containerEl).setName("Practice Engine v3 Settings").setHeading();
 
     new Setting(containerEl)
       .setName("Anki Sync Backend")

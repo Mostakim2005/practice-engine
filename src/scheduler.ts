@@ -53,9 +53,9 @@ export function calculateNextReview(meta: Partial<CardMeta>, effortId: string, a
 }
 
 export function calculateNextReviewFSRS(meta: Partial<CardMeta>, effortId: string, accuracyId: string, today: string, targetRetention = 0.9): CardMeta {
-  const effort = RETRIEVAL_EFFORTS.find((e) => e.id === effortId) ?? RETRIEVAL_EFFORTS[0]!;
+  const effort = RETRIEVAL_EFFORTS.find((e) => e.id === effortId) ?? RETRIEVAL_EFFORTS[0];
   if (effortId === "BLANK") accuracyId = "TOTAL_FAILURE";
-  const acc = ACCURACY_DIAGNOSTICS.find((a) => a.id === accuracyId) ?? ACCURACY_DIAGNOSTICS[0]!;
+  const acc = ACCURACY_DIAGNOSTICS.find((a) => a.id === accuracyId) ?? ACCURACY_DIAGNOSTICS[0];
   let grade = 3;
   if (accuracyId === "TOTAL_FAILURE" || effortId === "BLANK" || accuracyId === "CONFIDENT_FLAW") grade = 1;
   else if (accuracyId === "PARTIAL_CONCEPTS" || effortId === "EDUCATED_GUESS") grade = 2;
@@ -121,9 +121,9 @@ export function calculateNextReviewFSRS(meta: Partial<CardMeta>, effortId: strin
 }
 
 export function calculateNextReviewSM2(meta: Partial<CardMeta>, effortId: string, accuracyId: string, today: string): CardMeta {
-  const effort = RETRIEVAL_EFFORTS.find((e) => e.id === effortId) ?? RETRIEVAL_EFFORTS[0]!;
+  const effort = RETRIEVAL_EFFORTS.find((e) => e.id === effortId) ?? RETRIEVAL_EFFORTS[0];
   if (effortId === "BLANK") accuracyId = "TOTAL_FAILURE";
-  const acc = ACCURACY_DIAGNOSTICS.find((a) => a.id === accuracyId) ?? ACCURACY_DIAGNOSTICS[0]!;
+  const acc = ACCURACY_DIAGNOSTICS.find((a) => a.id === accuracyId) ?? ACCURACY_DIAGNOSTICS[0];
   const next: CardMeta = {
     id: meta.id || generateCardId(),
     due: today,
