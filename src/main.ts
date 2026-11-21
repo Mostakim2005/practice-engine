@@ -149,7 +149,7 @@ export default class PracticeEnginePlugin extends Plugin {
       leaf = this.app.workspace.getLeaf("tab");
       await leaf.setViewState({ type: VIEW_TYPE_PRACTICE_ENGINE, active: true });
     }
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
 
   async runAnkiSync(subset?: IndexedCard[]): Promise<AnkiSyncResult> {

@@ -78,8 +78,8 @@ export class PracticeView extends ItemView {
 
     this.registerDomEvent(this.contentEl, "keydown", (e: KeyboardEvent) => this.onKey(e));
     this.registerDomEvent(window, "click", () => {
-      if (this.activePopover && this.activePopover.style.display !== "none") {
-        this.activePopover.style.display = "none";
+      if (this.activePopover && !this.activePopover.hasClass("pe-hidden")) {
+        this.activePopover.addClass("pe-hidden");
       }
     });
 
@@ -569,13 +569,12 @@ export class PracticeView extends ItemView {
       cls: "pe-btn-secondary pe-btn-sm",
       text: "Columns",
     });
-    const colPopover = colMenuWrap.createDiv({ cls: "pe-col-popover" });
-    colPopover.style.display = "none";
+    const colPopover = colMenuWrap.createDiv({ cls: "pe-col-popover pe-hidden" });
     this.activePopover = colPopover;
 
     colBtn.onclick = (e) => {
       e.stopPropagation();
-      colPopover.style.display = colPopover.style.display === "none" ? "flex" : "none";
+      colPopover.toggleClass("pe-hidden", !colPopover.hasClass("pe-hidden"));
     };
     colPopover.onclick = (e) => e.stopPropagation();
 

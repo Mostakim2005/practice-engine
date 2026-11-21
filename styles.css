@@ -1446,6 +1446,10 @@
   display: inline-block;
 }
 
+.pe-hidden {
+  display: none !important;
+}
+
 .pe-col-popover {
   position: absolute;
   top: calc(100% + 6px);
@@ -1583,7 +1587,11 @@ body.pe-glassmorphic .pe-choice-btn:hover {
   box-shadow: var(--pe-glass-shadow-sm);
 }
 
-body.pe-glassmorphic .pe-col-popover {
+body.pe-glassmorphic .pe-hidden {
+  display: none !important;
+}
+
+.pe-col-popover {
   background: var(--pe-glass-surface-elevated);
   backdrop-filter: var(--pe-glass-blur);
   -webkit-backdrop-filter: var(--pe-glass-blur);
