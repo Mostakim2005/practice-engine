@@ -1,7 +1,7 @@
 {
   "name": "practice-engine",
-  "version": "2.1.0",
-  "description": "Topic-based active recall and spaced repetition with two-stage metacognitive review.",
+  "version": "3.0.0",
+  "description": "Two-stage metacognitive active recall powered by ts-fsrs with switchable Anki sync.",
   "main": "main.js",
   "type": "module",
   "scripts": {
@@ -24,5 +24,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.59.1"
   },
-  "author": "Mostakim2005"
+  "author": "Mostakim2005",
+  "dependencies": {
+    "ts-fsrs": "^5.0.0"
+  }
 }

@@ -1,4 +1,5 @@
-// Practice Engine — faithful types from live Nihon 2.1.0 bundle (4021 lines)
+export type AnkiSyncMode = "none" | "anki-connect" | "obsidian-to-anki" | "fsrs4anki-export";
+
 export interface VisibleColumns {
   topic: boolean;
   subject: boolean;
@@ -16,6 +17,11 @@ export interface PracticeSettings {
   targetRetention: number;
   cardFormat: "callout" | "block";
   creationMode: "modal" | "direct";
+  ankiSyncMode: AnkiSyncMode;
+  ankiConnectUrl: string;
+  ankiDefaultDeck: string;
+  ankiNoteType: string;
+  enableObsidianSRCompat: boolean;
   enableLatexToolboxBridge: boolean;
   enableNoteToolboxBridge: boolean;
   enableNaturalMathEngine: boolean;
@@ -25,4 +31,31 @@ export interface PracticeSettings {
   lastTopicPath: string;
   glassmorphism: boolean;
   cardDraft: Record<string, unknown> | null;
+}
+
+export interface CardMeta {
+  id: string;
+  due: string;
+  ivl: number;
+  reps: number;
+  diff: number;
+  s: number;
+  d: number;
+  lapses: number;
+  attempts: number;
+  hist: string[];
+  ankiNoteId?: number;
+}
+
+export interface IndexedCard {
+  key: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  metaLine: number;
+  questionMd: string;
+  answerMd: string;
+  deck: string;
+  tags: string[];
+  meta: CardMeta;
 }
