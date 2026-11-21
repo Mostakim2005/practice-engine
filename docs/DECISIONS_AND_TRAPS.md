@@ -1,36 +1,29 @@
 # Architectural Decisions, Pivots & Landmines (`DECISIONS_AND_TRAPS.md`)
-> **1-Line Summary:** Architectural pivots, library decisions, and non-obvious engineering landmines for Practice Engine.
+> **1-Line Summary:** Architectural pivots, library decisions, and verified engineering landmines for Practice Engine v3.0.0.
 
 ## 1. Architectural Decisions & Pivot History
 
-### [DECISION: Official-TsFsrs-Adoption-And-Modular-Architecture] | Aliases: ts-fsrs adoption, modular port, architecture pivot
-> **1-Line Summary:** Replaced vintage SM-2 math and custom prototype scheduler with the official `ts-fsrs` npm package and modular TypeScript subsystems.
-* **Decision Maker:** `[DECIDED BY: AGENT - Approved by Human]`
-* **Plain-English Summary of Pivot:** Maintaining a custom implementation of modern FSRS math introduces calculation edge cases. Leveraging `ts-fsrs` provides industry-standard stability/difficulty updates and seamless export to the `fsrs4anki` optimizer.
+### [DECISION: Official-TsFsrs-Adoption-And-Modular-Architecture]
+* Replaced custom FSRS/SM-2 prototype math with official `ts-fsrs` (`^5.0.0`) and modular TypeScript subsystems (`src/core/`, `src/sync/`, `src/ui/`).
 
-### [DECISION: Purge-Legacy-Runtime-Bundle] | Aliases: runtime purge, monolith removal
-> **1-Line Summary:** Completely eliminated the 5,600+ line monolithic `runtime/` folder in favor of pure compilation from `src/`.
-* **Decision Maker:** `[DECIDED BY: AGENT - Approved by Human]`
-* **Plain-English Summary of Pivot:** Shipping a duplicate compiled JavaScript runtime alongside source files created confusion, merge conflicts, and maintenance debt during audit passes. Building directly via `esbuild` guarantees source-truth fidelity.
+### [DECISION: Purge-Legacy-Runtime-Bundle-And-Salvage-UI]
+* Eliminated the 4,056-line monolithic `runtime/main.js` bundle while salvaging the ribbon buttons, 4-tab `PracticeView` workstation, cloze/masking-tape engine, heatmap analytics, and streamlined `QuestionEditorModal` into strict TypeScript.
+* Pruned brittle custom MATLAB/NaturalMath regexes and the DOM-mirror `TextareaLinkAutocompleter` in favor of native Obsidian editing and the LaTeX Toolbox bridge.
 
 ## 2. Do-Not-Touch Engineering Landmines (Traps)
 
-### [TRAP: AnkiConnect-Offline-Failures] | Aliases: ankiconnect timeout, sync stall
-> **1-Line Summary:** If desktop Anki is closed or AnkiConnect plugin is disabled, sync requests will fail.
-* **Strict Rule:** **ALWAYS** wrap AnkiConnect calls in defensive `try/catch` blocks inside loop processing so a single connection error alerts the user without aborting remaining operations or corrupting local vault files.
-* **Protected Code Anchors (Grep Targets):**
-  * `src/main.ts` -> `runAnkiSync`
-  * `src/sync/anki-bridge.ts` -> `invokeAnkiConnect`
+### [TRAP: TsFsrs-State-New-Reset]
+* **Strict Rule:** When calling `ts-fsrs` `scheduler.next(baseCard, now, grade)` on any card with `attempts > 0`, **ALWAYS** set `baseCard.state` (`State.Review` or `State.Relearning`), `baseCard.last_review`, and `baseCard.elapsed_days`. Leaving `createEmptyCard()` at `State.New` resets stability to initial values on every review.
+* **Protected Code Anchor:** `src/core/fsrs-adapter.ts` -> `scheduleWithTsFsrs`
 
-### [TRAP: AST-Line-Offset-Drift-On-Save] | Aliases: line drift, file rewrite collision
-> **1-Line Summary:** Modifying card metadata lines directly in notes can shift line offsets of subsequent cards in the same file.
-* **Strict Rule:** Card update operations must re-index the file or use content-addressed unique IDs (`<!--pe-meta:{"id":...}-->`) rather than relying on cached line numbers.
-* **Protected Code Anchors (Grep Targets):**
-  * `src/core/card-index.ts` -> `reindexFile`
-  * `src/core/markdown-ast.ts` -> `extractCardsFromMarkdown`
+### [TRAP: AST-Line-Offset-Drift-On-Save]
+* **Strict Rule:** Never mutate a vault file using cached `startLine`/`metaLine` offsets. Always re-parse inside `app.vault.process(...)` and match by stable `card.meta.id` (content-hashed fallback `h_<fnv1a>` when unrated, never line-index `c_${i}`).
+* **Protected Code Anchors:** `src/core/vault-store.ts` -> `writeCardMetadata`, `src/core/markdown-ast.ts` -> `parseCardsFromMarkdown`
 
-### [TRAP: Leech-Card-Runaway-Loop] | Aliases: leech stall, lapse runaway
-> **1-Line Summary:** Cards repeatedly failed cause lapse counts to escalate indefinitely and clutter daily reviews.
-* **Strict Rule:** Any card whose lapse count reaches or exceeds `MAX_LAPSES` (default 5) must be flagged as a leech via `isLeechCard` to prompt restructuring.
-* **Protected Code Anchors (Grep Targets):**
-  * `src/core/fsrs-adapter.ts` -> `isLeechCard`
+### [TRAP: AnkiConnect-Offline-Failures]
+* **Strict Rule:** Always wrap AnkiConnect calls in `try/catch`, guard `runAnkiSync` with an `isSyncing` lock, ensure the target deck and `PracticeEngine-2Stage` note model exist before `addNote`, and persist the returned `ankiNoteId` back into `<!--pe-meta:...-->` so subsequent syncs update instead of duplicating notes.
+* **Protected Code Anchors:** `src/main.ts` -> `runAnkiSync`, `src/sync/anki-bridge.ts` -> `pushCardToAnkiConnect`
+
+### [TRAP: Leech-Card-Runaway-Loop]
+* **Strict Rule:** Cards with `lapses >= 5` or `>= 2` Confident Misconceptions (`:CF`) in their last 5 reviews are flagged via `isLeechCard` and surfaced in the Study Queue "Leech Cards" filter and Card Browser badge.
+* **Protected Code Anchor:** `src/core/fsrs-adapter.ts` -> `isLeechCard`
