@@ -38,3 +38,9 @@
 
 ### [WISHLIST: In-Obsidian-FSRS-Optimizer] | Aliases: fsrs-browser, wasm optimizer
 > **1-Line Summary:** Integrate `open-spaced-repetition/fsrs-browser` WASM optimizer to fit personalized FSRS weights directly inside the Analytics tab.
+
+### [FEATURE: UI-UX-Parity-And-Accessibility] | Aliases: workstation status bar, editor menu add question, focus visible, reduced motion
+> **1-Line Summary:** Adds clickable Practice: Workstation Status Bar pill, right-click editor context menu for adding questions, and WCAG accessibility compliance.
+* **User Intention (Non-Negotiable):** Allow instant question generation from active note selections and quick study session launching from the status bar.
+* **Visual / UI Behavior:** Highlighted text in editor can be added as a flashcard question via context menu; status bar pill shows review readiness and launches workstation.
+* **Code Anchors (Grep Targets):** `src/main.ts`, `styles.css`

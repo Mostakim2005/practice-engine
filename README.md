@@ -1,25 +1,33 @@
 # Practice Engine
 
-Topic-based active recall and spaced repetition for Obsidian with a two-stage metacognitive review workstation, official [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs) scheduling, interactive card browser, activity heatmap analytics, and multi-mode Anki sync.
+Two-stage metacognitive flashcard review workstation powered by FSRS spaced repetition, Markdown AST card indexing, and Anki bridge sync.
 
-Current version: `v3.0.0`.
+## UI/UX Surface Inventory
 
-## Features
+| Surface | Implementation |
+| :--- | :--- |
+| **Ribbon Icons** | Brain icon (`Open Practice Engine Workstation`) and Plus icon (`Add Practice Question`). |
+| **Workspace View** | `PracticeView` (`ItemView`) for active recall review sessions. |
+| **Modals** | `QuestionEditorModal` and `DeleteConfirmModal`. |
+| **Status Bar** | Clickable `Practice: Workstation` pill launching the review workstation. |
+| **Context Menu** | `editor-menu` entry to quickly add a practice question while reading a note. |
+| **Settings Tab** | `PracticeEngineSettingTab`. |
 
-- **Ribbon Menu & 4-Tab Workstation**: Click the **brain** ribbon icon to open Study Queue, Card Browser, Analytics & Heatmap, and Sync & Tools; click **+** to add a question immediately.
-- **Two-Stage Metacognitive Review**: Rate retrieval effort (Stage 1) before revealing the answer and grading actual accuracy (Stage 2), with keyboard navigation (`1-6`, `Space/Enter`, `T`, `→`, `Esc`) and interactive cloze/masking-tape peeling.
-- **Official `ts-fsrs` Scheduling**: Full `State.Review` / `State.Relearning` reconstruction, leech detection, and `<!--SR:!due,ivl,ease-->` compatibility.
-- **Dual Card Syntax**: Supports both Obsidian Callouts (`> [!question]` / `> > [!answer]`) and clean Markdown blocks (`%%pe-card ... %%` / `%%pe-answer%%` / `%%pe-end%%`).
-- **Multi-Mode Anki Bridge**: Direct AnkiConnect push (auto-creating decks and `PracticeEngine-2Stage` model, writing back `ankiId`), `Obsidian_to_Anki` block export, and `FSRS4Anki` JSON review log export.
+## Documentation
+
+- `docs/PRODUCT.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS_AND_TRAPS.md`
+- `docs/VISUAL_LOG.md`
+- `AGENTS.md`
 
 ## Develop
 
-- `npm ci` (Node 20+)
-- `npm run dev` (watch mode)
-- `npm run build` -> compiles `main.js`
-
-Manual install: copy `main.js`, `manifest.json`, and `styles.css` to `<Vault>/.obsidian/plugins/practice-engine/`.
+```bash
+npm install
+npm run build
+```
 
 ## License
 
-Code: PolyForm Noncommercial 1.0.0 (see `LICENSE`). Docs: CC BY-NC 4.0. Copyright (c) Mostakim2005. Source-available: free non-commercial use with credit, no commercial use.
+See `LICENSE`.

@@ -127,6 +127,31 @@ export default class PracticeEnginePlugin extends Plugin {
       },
     });
 
+    const statusEl = this.addStatusBarItem();
+    statusEl.addClass("pe-status-pill");
+    statusEl.setText("Practice: Workstation");
+    statusEl.setAttribute("role", "button");
+    statusEl.setAttribute("tabindex", "0");
+    statusEl.setAttribute("aria-label", "Open Practice Engine Workstation");
+    statusEl.addEventListener("click", () => void this.activateView());
+    statusEl.addEventListener("keydown", (evt: KeyboardEvent) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void this.activateView();
+      }
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu) => {
+        menu.addItem((item) =>
+          item
+            .setTitle("Practice Engine: Add Practice Question")
+            .setIcon("plus")
+            .onClick(() => new QuestionEditorModal(this.app, this).open())
+        );
+      })
+    );
+
     this.addSettingTab(new PracticeEngineSettingTab(this.app, this));
   }
 

@@ -49,3 +49,18 @@ Persisted inline below each card as space-delimited `key=value` pairs inside an 
 ```markdown
 <!--pe-meta: id=c_abc12345 due=2026-11-28 ivl=7 reps=2 diff=2.4 s=6.80 d=4.80 lapses=0 attempts=2 ankiId=1732100000 hist=2026-11-21:FC:FL -->
 ```
+
+### [SUBSYSTEM: UI-UX-Parity-And-Accessibility] | Aliases: status bar, ribbon icon, confirm modal, focus-visible, reduced-motion
+> **1-Line Summary:** Integrates native Obsidian workspace UI touchpoints (ribbon launcher, live status bar pill, modal confirmation guardrails) and WCAG AA accessibility styles.
+* **Architecture / Subsystem Role:** Standardizes the plugin surface across desktop and mobile Obsidian clients with keyboard accessibility, reduced-motion safety, and high-visibility status telemetry.
+* **Component Diagram:**
+```mermaid
+graph LR
+    subgraph UI_Parity["UI/UX Universal Baseline"]
+        Ribbon["Ribbon Icon Launcher"] --> Leaf["Workspace Leaf / Modal"]
+        StatusBar["Status Bar Pill"] --> Leaf
+        Modals["Destructive Actions"] --> Confirm["ConfirmModal Guardrail"]
+        CSS["Universal CSS"] --> A11y["Focus-Visible & Reduced Motion"]
+    end
+```
+* **Code Anchors (Grep Targets):** `src/main.ts`, `styles.css`
