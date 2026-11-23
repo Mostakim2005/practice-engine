@@ -15,13 +15,17 @@ import { QuestionEditorModal } from "./ui/modals";
 import { PracticeView, VIEW_TYPE_PRACTICE_ENGINE } from "./ui/practice-view";
 
 export default class PracticeEnginePlugin extends Plugin {
-  settings!: PracticeSettings;
+  settings: PracticeSettings = {
+    ...DEFAULT_SETTINGS,
+    visibleColumns: { ...DEFAULT_SETTINGS.visibleColumns },
+  };
   index!: DerivedCardIndex;
   store!: VaultCardStore;
   anki!: AnkiBridge;
   private isSyncing = false;
+  private settingsReady: Promise<void> = Promise.resolve();
 
-  async onload(): Promise<void> {
+  private async loadSettings(): Promise<void> {
     const loaded = (await this.loadData()) as Partial<PracticeSettings> | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
     this.settings.visibleColumns = Object.assign(
@@ -29,7 +33,12 @@ export default class PracticeEnginePlugin extends Plugin {
       DEFAULT_SETTINGS.visibleColumns,
       loaded?.visibleColumns ?? {}
     );
-    this.applyThemePreferences();
+  }
+
+  onload(): void {
+    this.settingsReady = this.loadSettings().then(() => {
+      this.applyThemePreferences();
+    });
 
     this.index = new DerivedCardIndex(this.app, () => this.settings);
     this.store = new VaultCardStore(this.app, () => this.settings);
@@ -49,7 +58,7 @@ export default class PracticeEnginePlugin extends Plugin {
     });
 
     this.app.workspace.onLayoutReady(() => {
-      void this.index.rebuildAll();
+      void this.settingsReady.then(() => this.index.rebuildAll());
     });
 
     this.registerEvent(
@@ -165,6 +174,7 @@ export default class PracticeEnginePlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
+    await this.settingsReady;
     await this.saveData(this.settings);
   }
 

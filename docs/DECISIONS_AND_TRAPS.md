@@ -27,3 +27,9 @@
 ### [TRAP: Leech-Card-Runaway-Loop]
 * **Strict Rule:** Cards with `lapses >= 5` or `>= 2` Confident Misconceptions (`:CF`) in their last 5 reviews are flagged via `isLeechCard` and surfaced in the Study Queue "Leech Cards" filter and Card Browser badge.
 * **Protected Code Anchor:** `src/core/fsrs-adapter.ts` -> `isLeechCard`
+
+### [DECISION: Non-Blocking-Startup-Hydration] | Aliases: startup latency, non-blocking onload, deferred settings
+> **1-Line Summary:** Hydrated settings asynchronously via settingsReady and gated onLayoutReady card index rebuild on settingsReady so onload() is non-blocking.
+* **Decision Maker:** `[DECIDED BY: HUMAN]`
+* **Protected Code Anchors (Grep Targets):** `src/main.ts` -> `onload`, `settingsReady`
+

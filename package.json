@@ -1,6 +1,6 @@
 {
   "name": "practice-engine",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Two-stage metacognitive active recall powered by ts-fsrs with switchable Anki sync.",
   "main": "main.js",
   "type": "module",
